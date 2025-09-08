@@ -62,6 +62,51 @@
     .subject-row:last-child {
       border-bottom: none;
     }
+
+    /* Стили для загрузки изображений */
+    .image-upload {
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.3s;
+    }
+
+    .image-upload:hover {
+      border-color: #3b82f6;
+    }
+
+    .image-upload.dragover {
+      border-color: #3b82f6;
+      background-color: #f0f9ff;
+    }
+
+    .uploaded-image {
+      max-width: 100%;
+      max-height: 200px;
+      margin-top: 10px;
+      border-radius: 4px;
+    }
+
+    /* Стили для ссылок в контенте */
+    .content-link {
+      color: #3b82f6;
+      text-decoration: underline;
+    }
+
+    .content-link:hover {
+      color: #2563eb;
+    }
+
+    /* Стили для изображений в контенте */
+    .content-image {
+      max-width: 100%;
+      max-height: 300px;
+      border-radius: 8px;
+      margin: 10px 0;
+      display: block;
+    }
   </style>
 </head>
 <body class="bg-gray-200 min-h-screen p-6 transition-colors duration-300">
@@ -106,6 +151,11 @@
         </svg>
       </div>
     </div>
+  </div>
+
+  <!-- Changelog ссылка -->
+  <div class="fixed bottom-2 right-4 text-gray-500 text-sm text-right">
+    <a href="#" onclick="openChangelog()" class="text-sky-500 hover:text-sky-600 underline">Changelog</a>
   </div>
 
   <!-- Сетка дней -->
@@ -165,16 +215,48 @@
     </div>
   </div>
 
+  <!-- Модалка для редактирования ДЗ -->
+  <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="modal bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl w-11/12 max-w-3xl relative">
+      <button onclick="closeEditModal()" class="absolute top-2 right-2 text-2xl text-gray-500 hover:text-red-500">✖</button>
+      <h2 id="editSubject" class="text-xl font-bold mb-4 dark:text-white"></h2>
+      
+      <textarea id="homeworkText" placeholder="Введите домашнее задание..." class="w-full p-3 border rounded mb-4 dark:bg-gray-700 dark:text-white dark:border-gray-600" rows="4"></textarea>
+      
+      <div class="image-upload mb-4" id="imageUpload">
+        <p>📁 Перетащите сюда изображение или нажмите для выбора</p>
+        <input type="file" id="imageInput" accept="image/*" class="hidden">
+        <img id="uploadedImagePreview" class="uploaded-image hidden">
+      </div>
+      
+      <div class="flex justify-end">
+        <button onclick="saveHomework()" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Готово</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Changelog модалка -->
+  <div id="changelogModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="modal bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl w-11/12 max-w-3xl relative">
+      <button onclick="closeChangelog()" class="absolute top-2 right-2 text-2xl text-gray-500 hover:text-red-500">✖</button>
+      <h2 class="text-xl font-bold mb-4 dark:text-white">Changelog</h2>
+      <pre class="whitespace-pre-wrap text-sm dark:text-white">[+] Mini-Chat
+[+] Добавили Admin Panel
+[+] Добавили Switch Theme
+[/] Улучшили дизайн</pre>
+    </div>
+  </div>
+
   <script>
     // ==================== КОНФИГУРАЦИЯ FIREBASE ====================
     const firebaseConfig = {
-      apiKey: "AIzaSyD4SjU8HuZZZwruDnXQ3Mz1l6mj9xpn8EU",
-      authDomain: "school-diary-8a.firebaseapp.com",
-      databaseURL: "https://school-diary-8a-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "school-diary-8a",
-      storageBucket: "school-diary-8a.firebasestorage.app",
-      messagingSenderId: "252043407645",
-      appId: "1:252043407645:web:fa1c47b50369eb667571f4"
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "YOUR_PROJECT",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
     };
     // ================================================================
 
@@ -186,6 +268,8 @@
     let darkMode = false;
     let homework = {};
     let currentEditingSubject = null;
+    let currentEditingDay = null;
+    let uploadedImage = null;
     
     const lessons = {
       mon: ["Алгебра","РОВ","Химия","География","Английский язык","Физика","Биология"],
@@ -429,35 +513,67 @@
 
     function editHW(subject, day) {
       currentEditingSubject = subject;
+      currentEditingDay = day;
       const currentHW = homework[day] && homework[day][subject] || "";
-      const dz = prompt(`Домашнее задание для: ${subject}\n(День: ${getDayName(day)})`, currentHW);
       
-      if (dz !== null) {
-        // Инициализируем день если его нет
-        if (!homework[day]) {
-          homework[day] = {};
-        }
-        homework[day][subject] = dz;
-        saveData();
-        renderAll();
+      // Извлекаем только текст (без изображений) для редактирования
+      const textOnly = currentHW.replace(/!\[Image\]\(data:image\/[^)]+\)/g, '').trim();
+      
+      document.getElementById('editSubject').textContent = subject;
+      document.getElementById('homeworkText').value = textOnly;
+      document.getElementById('uploadedImagePreview').classList.add('hidden');
+      uploadedImage = null;
+      
+      openEditModal();
+    }
+
+    function saveHomework() {
+      const text = document.getElementById('homeworkText').value;
+      
+      if (!homework[currentEditingDay]) {
+        homework[currentEditingDay] = {};
       }
+      
+      let hwContent = text;
+      if (uploadedImage) {
+        hwContent += `\n\n![Image](${uploadedImage})`;
+      }
+      
+      homework[currentEditingDay][currentEditingSubject] = hwContent;
+      saveData();
+      closeEditModal();
+      renderAll();
     }
 
-    function getDayName(dayId) {
-      const days = {
-        'mon': 'Понедельник',
-        'tue': 'Вторник',
-        'wed': 'Среда',
-        'thu': 'Четверг',
-        'fri': 'Пятница'
-      };
-      return days[dayId] || dayId;
+    // ==================== ОБРАБОТКА КОНТЕНТА ====================
+    function formatContent(content) {
+      if (!content) return '<span class="text-gray-500">Домашнее задание не задано</span>';
+      
+      let formattedContent = content;
+      
+      // Преобразование URL в ссылки
+      formattedContent = formattedContent.replace(
+        /(https?:\/\/[^\s]+)/g, 
+        '<a href="$1" target="_blank" class="content-link">$1</a>'
+      );
+      
+      // Преобразование base64 изображений в теги <img>
+      formattedContent = formattedContent.replace(
+        /!\[Image\]\((data:image\/[^)]+)\)/g,
+        '<img src="$1" class="content-image" alt="Загруженное изображение">'
+      );
+      
+      // Сохранение переносов строк
+      formattedContent = formattedContent.replace(/\n/g, '<br>');
+      
+      return formattedContent;
     }
 
+    // ==================== МОДАЛКИ ====================
     function openModal(subject, content) {
       document.getElementById("dzContent").innerHTML = `
         <h3 class="font-semibold text-lg mb-2">${subject}</h3>
-        <div>${content || '<span class="text-gray-500">Домашнее задание не задано</span>'}</div>
+        <div class="whitespace-pre-wrap">${formatContent(content)}</div>
       `;
       document.getElementById("dzModal").classList.remove("hidden");
       setTimeout(() => document.querySelector("#dzModal .modal").classList.add("show"), 10);
@@ -467,6 +583,83 @@
       const modal = document.querySelector("#dzModal .modal");
       modal.classList.remove("show");
       setTimeout(() => document.getElementById("dzModal").classList.add("hidden"), 250);
+    }
+
+    function openEditModal() {
+      document.getElementById("editModal").classList.remove("hidden");
+      setTimeout(() => document.querySelector("#editModal .modal").classList.add("show"), 10);
+    }
+
+    function closeEditModal() {
+      const modal = document.querySelector("#editModal .modal");
+      modal.classList.remove("show");
+      setTimeout(() => document.getElementById("editModal").classList.add("hidden"), 250);
+    }
+
+    function openChangelog() {
+      document.getElementById("changelogModal").classList.remove("hidden");
+      setTimeout(() => document.querySelector("#changelogModal .modal").classList.add("show"), 10);
+    }
+
+    function closeChangelog() {
+      const modal = document.querySelector("#changelogModal .modal");
+      modal.classList.remove("show");
+      setTimeout(() => document.getElementById("changelogModal").classList.add("hidden"), 250);
+    }
+
+    // ==================== ЗАГРУЗКА ИЗОБРАЖЕНИЙ ====================
+    function setupImageUpload() {
+      const uploadArea = document.getElementById('imageUpload');
+      const fileInput = document.getElementById('imageInput');
+      const imagePreview = document.getElementById('uploadedImagePreview');
+      
+      // Клик по области загрузки
+      uploadArea.addEventListener('click', () => {
+        fileInput.click();
+      });
+      
+      // Перетаскивание файлов
+      uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+      });
+      
+      uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+      });
+      
+      uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          handleImageUpload(files[0]);
+        }
+      });
+      
+      // Выбор файла через input
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+          handleImageUpload(e.target.files[0]);
+        }
+      });
+    }
+    
+    function handleImageUpload(file) {
+      if (!file.type.startsWith('image/')) {
+        showNotification('❌ Пожалуйста, выберите изображение', 'error');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        uploadedImage = e.target.result;
+        const imagePreview = document.getElementById('uploadedImagePreview');
+        imagePreview.src = uploadedImage;
+        imagePreview.classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
     }
 
     // ==================== ЗАПУСК ====================
@@ -479,6 +672,9 @@
       // Загружаем данные
       loadData();
       
+      // Настраиваем загрузку изображений
+      setupImageUpload();
+      
       // Слушаем онлайн/оффлайн
       window.addEventListener('online', loadData);
       window.addEventListener('offline', () => {
@@ -488,6 +684,8 @@
 
     window.addEventListener('click', (e) => {
       if (e.target.id === 'dzModal') closeModal();
+      if (e.target.id === 'editModal') closeEditModal();
+      if (e.target.id === 'changelogModal') closeChangelog();
     });
   </script>
 </body>
