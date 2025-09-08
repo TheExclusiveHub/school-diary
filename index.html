@@ -107,43 +107,6 @@
       margin: 10px 0;
       display: block;
     }
-
-    /* Стили для кнопки доната */
-    .donate-button {
-      transition: transform 0.2s ease;
-      cursor: pointer;
-    }
-
-    .donate-button:hover {
-      transform: scale(1.05);
-    }
-
-    /* Стили для модалки доната */
-    .donate-modal-content {
-      text-align: center;
-      line-height: 1.6;
-    }
-
-    .donate-warning {
-      color: #dc2626;
-      font-weight: bold;
-      font-size: 1.1em;
-      margin-bottom: 1rem;
-    }
-
-    .donate-contact {
-      background-color: #fef3c7;
-      padding: 1rem;
-      border-radius: 8px;
-      border-left: 4px solid #f59e0b;
-      margin: 1rem 0;
-    }
-
-    .donate-username {
-      font-weight: bold;
-      color: #2563eb;
-      font-size: 1.1em;
-    }
   </style>
 </head>
 <body class="bg-gray-200 min-h-screen p-6 transition-colors duration-300">
@@ -152,7 +115,7 @@
   <div id="notification" class="notification hidden"></div>
 
   <!-- Шапка -->
-  <div class="flex justify-center items-center mb-2 relative">
+  <div class="flex justify-center items-center mb-4 relative">
     <h1 class="text-2xl font-bold">📚 Дневник (Firebase Sync)</h1>
     <div id="onlineStatus" class="absolute left-4 top-0 text-sm flex items-center">
       <span class="online-dot online"></span>
@@ -160,13 +123,6 @@
     </div>
     <div id="syncStatus" class="absolute right-4 top-0 text-sm text-gray-600">
       Загрузка...
-    </div>
-  </div>
-
-  <!-- Кнопка доната -->
-  <div class="flex justify-center mb-4">
-    <div onclick="openDonateModal()" class="donate-button">
-      <img src="donate.gif" alt="Поддержать проект" class="h-10 mx-auto hover:opacity-90 transition-opacity">
     </div>
   </div>
 
@@ -203,7 +159,7 @@
   </div>
 
   <!-- Сетка дней -->
-  <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mt-16">
+  <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mt-20">
     <!-- Понедельник -->
     <div class="bg-gray-800 text-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
       <div class="flex border-b border-gray-700">
@@ -279,35 +235,6 @@
     </div>
   </div>
 
-  <!-- Модалка для доната -->
-  <div id="donateModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="modal bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl w-11/12 max-w-md relative">
-      <button onclick="closeDonateModal()" class="absolute top-2 right-2 text-2xl text-gray-500 hover:text-red-500">✖</button>
-      <h2 class="text-xl font-bold mb-4 dark:text-white text-center">💝 Поддержка проекта</h2>
-      
-      <div class="donate-modal-content dark:text-white">
-        <div class="donate-warning">❗Стоп, стоп. Эта ссылка ведёт для пожертвований и продвижения проекта.❗</div>
-        
-        <p class="mb-4">Если вы действительно хотите пожертвовать, то обратитесь сюда:</p>
-        
-        <div class="donate-contact">
-          <span class="donate-username">@DonateDiary</span>
-          <p class="text-sm mt-1">Telegram</p>
-        </div>
-        
-        <p class="text-sm text-gray-600 dark:text-gray-400 mt-4">
-          Ваша поддержка поможет развивать проект и добавлять новые функции!
-        </p>
-      </div>
-      
-      <div class="flex justify-center mt-6">
-        <button onclick="closeDonateModal()" class="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
-          Понятно
-        </button>
-      </div>
-    </div>
-  </div>
-
   <!-- Changelog модалка -->
   <div id="changelogModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="modal bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl w-11/12 max-w-3xl relative">
@@ -323,13 +250,13 @@
   <script>
     // ==================== КОНФИГУРАЦИЯ FIREBASE ====================
     const firebaseConfig = {
-      apiKey: "AIzaSyD4SjU8HuZZZwruDnXQ3Mz1l6mj9xpn8EU",
-      authDomain: "school-diary-8a.firebaseapp.com",
-      databaseURL: "https://school-diary-8a-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "school-diary-8a",
-      storageBucket: "school-diary-8a.firebasestorage.app",
-      messagingSenderId: "252043407645",
-      appId: "1:252043407645:web:ebde5ca5405273a07571f4"
+  apiKey: "AIzaSyD4SjU8HuZZZwruDnXQ3Mz1l6mj9xpn8EU",
+  authDomain: "school-diary-8a.firebaseapp.com",
+  databaseURL: "https://school-diary-8a-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "school-diary-8a",
+  storageBucket: "school-diary-8a.firebasestorage.app",
+  messagingSenderId: "252043407645",
+  appId: "1:252043407645:web:ebde5ca5405273a07571f4"
     };
     // ================================================================
 
@@ -351,18 +278,6 @@
       thu: ["Физика","Геометрия","Музыка","Химия","Литература","Русский язык"],
       fri: ["Общество","Технология","Алгебра","Английский язык","Биология","ОБЖ","История"]
     };
-
-    // ==================== МОДАЛКИ ДОНАТА ====================
-    function openDonateModal() {
-      document.getElementById("donateModal").classList.remove("hidden");
-      setTimeout(() => document.querySelector("#donateModal .modal").classList.add("show"), 10);
-    }
-
-    function closeDonateModal() {
-      const modal = document.querySelector("#donateModal .modal");
-      modal.classList.remove("show");
-      setTimeout(() => document.getElementById("donateModal").classList.add("hidden"), 250);
-    }
 
     // Звуковые эффекты
     function playSound(soundName) {
@@ -386,7 +301,7 @@
       }, 3000);
     }
 
-    // ==================== ТЕМНАя ТЕМА ====================
+    // ==================== ТЕМНАЯ ТЕМА ====================
     function toggleTheme() {
       darkMode = !darkMode;
       applyTheme();
@@ -770,7 +685,6 @@
     window.addEventListener('click', (e) => {
       if (e.target.id === 'dzModal') closeModal();
       if (e.target.id === 'editModal') closeEditModal();
-      if (e.target.id === 'donateModal') closeDonateModal();
       if (e.target.id === 'changelogModal') closeChangelog();
     });
   </script>
