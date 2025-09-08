@@ -58,6 +58,14 @@
     </div>
   </div>
 
+<!-- Кнопка синхронизации -->
+<div class="absolute top-4 left-40 flex flex-col items-start z-50">
+  <button onclick="forceSync()" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">Синхронизировать</button>
+  <div id="syncStatus" class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+    Последняя синхронизация: <span id="lastSyncTime">никогда</span>
+  </div>
+</div>
+
   <!-- Сетка (5 дней) -->
   <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mt-6">
     <div class="bg-gray-800 text-white rounded-2xl shadow-lg border overflow-hidden flex flex-col">
@@ -151,6 +159,7 @@
       <pre class="whitespace-pre-wrap text-sm">[+] Mini-Chat
 [+] Добавили Admin Panel
 [+] Добавили Switch Theme
+[+] Добавили синхронизацию данных
 [/] Улучшили дизайн</pre>
     </div>
   </div>
@@ -191,32 +200,109 @@
       fri: ["Общество","Технология","Алгебра","Английский язык","Биология","ОБЖ","История"]
     };
     let homework = {}; // данные из JSONBin
+    let autoRefreshInterval;
+
+    // Автообновление данных
+    function startAutoRefresh() {
+        autoRefreshInterval = setInterval(loadData, 30000); // 30 секунд
+        console.log("Автообновление запущено (каждые 30 секунд)");
+    }
+
+    function stopAutoRefresh() {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+            console.log("Автообновление остановлено");
+        }
+    }
+
+function forceSync() {
+    console.log("Принудительная синхронизация...");
+    
+    // Визуальная обратная связь
+    const button = document.querySelector('button[onclick="forceSync()"]');
+    const originalText = button.textContent;
+    button.textContent = "Синхронизация...";
+    button.disabled = true;
+    button.classList.add('opacity-50');
+    
+    loadData().finally(() => {
+        // Восстанавливаем кнопку через 1 секунду
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.disabled = false;
+            button.classList.remove('opacity-50');
+        }, 1000);
+    });
+}
 
     async function loadData() {
       try {
-        const res = await fetch(API_URL + "/latest", {
-          headers: { "X-Master-Key": MASTER_KEY }
+        // Добавляем timestamp для предотвращения кэширования
+        const timestamp = new Date().getTime();
+        const res = await fetch(`${API_URL}/latest?nocache=${timestamp}`, {
+          method: 'GET',
+          headers: { 
+            "X-Master-Key": MASTER_KEY,
+            "X-Bin-Meta": "false",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache"
+          },
+          cache: 'no-store'
         });
+
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        
         const data = await res.json();
         homework = data.record || {};
         renderAll();
+        
+        // Сохраняем локальную копию на случай проблем с интернетом
+        localStorage.setItem('cachedHomework', JSON.stringify(homework));
+        
+        // Обновляем время последней синхронизации
+        const now = new Date().toLocaleTimeString();
+        if (document.getElementById('lastSyncTime')) {
+          document.getElementById('lastSyncTime').textContent = now;
+        }
+        console.log("✓ Данные синхронизированы:", now);
+        
       } catch (error) {
-        console.error("Ошибка загрузки данных:", error);
-        homework = {};
-        renderAll();
+        console.error("✗ Ошибка загрузки:", error);
+        
+        // Пытаемся загрузить из локального кэша
+        const cached = localStorage.getItem('cachedHomework');
+        if (cached) {
+          homework = JSON.parse(cached);
+          renderAll();
+          console.log("Загружены кэшированные данные");
+        }
+        
+        if (document.getElementById('lastSyncTime')) {
+          document.getElementById('lastSyncTime').textContent = "ошибка";
+        }
       }
     }
 
     async function saveData() {
       try {
-        await fetch(API_URL, {
+        // Сохраняем локально на случай проблем с интернетом
+        localStorage.setItem('cachedHomework', JSON.stringify(homework));
+        
+        const res = await fetch(API_URL, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            "X-Master-Key": MASTER_KEY
+            "X-Master-Key": MASTER_KEY,
+            "X-Bin-Versioning": "false"
           },
           body: JSON.stringify(homework)
         });
+        
+        if (res.ok) {
+          console.log("✓ Данные сохранены");
+        } else {
+          console.error("✗ Ошибка сохранения");
+        }
       } catch (error) {
         console.error("Ошибка сохранения данных:", error);
       }
@@ -440,7 +526,13 @@
       
       // загрузка данных
       loadData();
+      
+      // запускаем автообновление
+      startAutoRefresh();
     };
+
+    // Синхронизация при фокусе окна
+    window.addEventListener('focus', loadData);
 
     // Закрытие модалов по клику вне контента (UX)
     window.addEventListener('click', (e) => {
