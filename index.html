@@ -107,6 +107,43 @@
       margin: 10px 0;
       display: block;
     }
+
+    /* Стили для кнопки доната */
+    .donate-button {
+      transition: transform 0.2s ease;
+      cursor: pointer;
+    }
+
+    .donate-button:hover {
+      transform: scale(1.05);
+    }
+
+    /* Стили для модалки доната */
+    .donate-modal-content {
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    .donate-warning {
+      color: #dc2626;
+      font-weight: bold;
+      font-size: 1.1em;
+      margin-bottom: 1rem;
+    }
+
+    .donate-contact {
+      background-color: #fef3c7;
+      padding: 1rem;
+      border-radius: 8px;
+      border-left: 4px solid #f59e0b;
+      margin: 1rem 0;
+    }
+
+    .donate-username {
+      font-weight: bold;
+      color: #2563eb;
+      font-size: 1.1em;
+    }
   </style>
 </head>
 <body class="bg-gray-200 min-h-screen p-6 transition-colors duration-300">
@@ -115,7 +152,7 @@
   <div id="notification" class="notification hidden"></div>
 
   <!-- Шапка -->
-  <div class="flex justify-center items-center mb-4 relative">
+  <div class="flex justify-center items-center mb-2 relative">
     <h1 class="text-2xl font-bold">📚 Дневник (Firebase Sync)</h1>
     <div id="onlineStatus" class="absolute left-4 top-0 text-sm flex items-center">
       <span class="online-dot online"></span>
@@ -126,17 +163,24 @@
     </div>
   </div>
 
+  <!-- Кнопка доната -->
+  <div class="flex justify-center mb-4">
+    <div onclick="openDonateModal()" class="donate-button">
+      <img src="donate.gif" alt="Поддержать проект" class="h-10 mx-auto hover:opacity-90 transition-opacity">
+    </div>
+  </div>
+
   <!-- Админ панель -->
-  <div class="absolute top-4 left-4 flex flex-col items-start z-40">
+  <div class="absolute top-14 left-4 flex flex-col items-start z-40">
     <button onclick="toggleAdminLogin()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">Админ</button>
-    <div id="adminLogin" class="mt-3 space-x-2 flex justify-center items-center hidden bg-white p-3 rounded shadow-lg">
+    <div id="adminLogin" class="mt-2 space-x-2 flex justify-center items-center hidden bg-white p-3 rounded shadow-lg">
       <input id="adminPassword" type="password" placeholder="Пароль" class="border p-2 rounded w-32">
-      <button onclick="loginAdmin()" class="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">Войти</button>
+      <button onclick="loginAdmin()" class="px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">Войти</button>
     </div>
   </div>
 
   <!-- Кнопка синхронизации (только для админов) -->
-  <div id="syncButtonContainer" class="absolute top-4 left-40 flex flex-col items-start z-40 hidden">
+  <div id="syncButtonContainer" class="absolute top-14 left-24 flex flex-col items-start z-40 hidden">
     <button onclick="forceSync()" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
       🔄 Синхронизировать
     </button>
@@ -159,7 +203,7 @@
   </div>
 
   <!-- Сетка дней -->
-  <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mt-6">
+  <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mt-16">
     <!-- Понедельник -->
     <div class="bg-gray-800 text-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
       <div class="flex border-b border-gray-700">
@@ -235,736 +279,31 @@
     </div>
   </div>
 
-  <!-- Changelog модалка -->
-  <div id="changelogModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="modal bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl w-11/12 max-w-3xl relative">
-      <button onclick="closeChangelog()" class="absolute top-2 right-2 text-2xl text-gray-500 hover:text-red-500">✖</button>
-      <h2 class="text-xl font-bold mb-4 dark:text-white">Changelog</h2>
-      <pre class="whitespace-pre-wrap text-sm dark:text-white">[+] Mini-Chat
-[+] Добавили Admin Panel
-[+] Добавили Switch Theme
-[/] Улучшили дизайн</pre>
-    </div>
-  </div>
-
-  <script>
-    // ==================== КОНФИГУРАЦИЯ FIREBASE ====================
-    const firebaseConfig = {
-      apiKey: "AIzaSyD4SjU8HuZZZwruDnXQ3Mz1l6mj9xpn8EU",
-      authDomain: "school-diary-8a.firebaseapp.com",
-      databaseURL: "https://school-diary-8a-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "school-diary-8a",
-      storageBucket: "school-diary-8a.firebasestorage.app",
-      messagingSenderId: "252043407645",
-      appId: "1:252043407645:web:ebde5ca5405273a07571f4"
-    };
-    // ================================================================
-
-    // Инициализация Firebase
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-
-    let isAdmin = false;
-    let darkMode = false;
-    let homework = {};
-    let currentEditingSubject = null;
-    let currentEditingDay = null;
-    let uploadedImage = null;
-    let loginAttempts = 0;
-    const MAX_ATTEMPTS = 5;
-    
-    const lessons = {
-      mon: ["Алгебра","РОВ","Химия","География","Английский язык","Физика","Биология"],
-      tue: ["Геометрия","Теория вероятности","ФК","История","Русский язык","Литература"],
-      wed: ["Английский язык","ФК","Русский язык","Алгебра","География","ИКТ"],
-      thu: ["Физика","Геометрия","Музыка","Химия","Литература","Русский язык"],
-      fri: ["Общество","Технология","Алгебра","Английский язык","Биология","ОБЖ","История"]
-    };
-
-    // ==================== ЗАЩИТА АДМИН ПАНЕЛИ ====================
-
-    // Хеширование пароля с солью
-    async function hashPassword(password) {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(password + 'school_diary_salt_2024');
-        const hash = await crypto.subtle.digest('SHA-256', data);
-        return Array.from(new Uint8Array(hash))
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join('');
-    }
-
-    // Защита от DevTools
-    function setupDevToolsProtection() {
-        // Блокировка горячих клавиш
-        document.addEventListener('keydown', (e) => {
-            // F12, Ctrl+Shift+I, Ctrl+Shift+C, Ctrl+U
-            if (e.key === 'F12' || 
-                (e.ctrlKey && e.shiftKey && e.key === 'I') ||
-                (e.ctrlKey && e.shiftKey && e.key === 'C') ||
-                (e.ctrlKey && e.key === 'U')) {
-                e.preventDefault();
-                showNotification('❌ Эта функция заблокирована для безопасности', 'error');
-                return false;
-            }
-        });
-        
-        // Блокировка правого клика
-        document.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            showNotification('❌ Контекстное меню отключено', 'error');
-            return false;
-        });
-
-        // Дополнительная защита - обнаружение открытия DevTools
-        setInterval(() => {
-            const widthThreshold = window.outerWidth - window.innerWidth > 160;
-            const heightThreshold = window.outerHeight - window.innerHeight > 160;
-            
-            if (widthThreshold || heightThreshold) {
-                showNotification('❌ Инструменты разработчика заблокированы', 'error');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            }
-        }, 1000);
-    }
-
-    // Защищенный вход в админку
-    async function loginAdmin() {
-        if (loginAttempts >= MAX_ATTEMPTS) {
-            showNotification('❌ Слишком много попыток. Попробуйте позже.', 'error');
-            return;
-        }
-        
-        const password = document.getElementById('adminPassword').value;
-        
-        if (!password.trim()) {
-            showNotification('❌ Введите пароль', 'error');
-            return;
-        }
-        
-        // Хешируем введенный пароль и сравниваем с хешем правильного пароля
-        const inputHash = await hashPassword(password);
-        const correctHash = await hashPassword("7777"); // Ваш пароль
-        
-        if (inputHash === correctHash) {
-            isAdmin = true;
-            loginAttempts = 0;
-            document.getElementById('adminLogin').classList.add('hidden');
-            document.getElementById('syncButtonContainer').classList.remove('hidden');
-            showNotification('✅ Вы вошли как администратор', 'success');
-            renderAll();
-        } else {
-            loginAttempts++;
-            const remaining = MAX_ATTEMPTS - loginAttempts;
-            showNotification(`❌ Неверный пароль. Осталось попыток: ${remaining}`, 'error');
-            
-            if (loginAttempts >= MAX_ATTEMPTS) {
-                setTimeout(() => {
-                    loginAttempts = 0;
-                    showNotification('✅ Блокировка снята. Можете попробовать снова.', 'success');
-                }, 5 * 60 * 1000);
-            }
-        }
-        
-        document.getElementById('adminPassword').value = "";
-    }
-
-    function toggleAdminLogin() {
-        document.getElementById('adminLogin').classList.toggle('hidden');
-    }
-
-    // ==================== УВЕДОМЛЕНИЯ ====================
-    function showNotification(message, type = 'success') {
-        const notification = document.getElementById('notification');
-        notification.textContent = message;
-        notification.className = `notification ${type} show`;
-        
-        setTimeout(() => {
-            notification.classList.remove('show');
-            setTimeout(() => notification.classList.add('hidden'), 300);
-        }, 3000);
-    }
-
-    // ==================== ТЕМНАЯ ТЕМА ====================
-    function toggleTheme() {
-        darkMode = !darkMode;
-        applyTheme();
-    }
-
-    function applyTheme() {
-        const body = document.body;
-        const circle = document.getElementById('themeCircle');
-        const icon = document.getElementById('themeIcon');
-        
-        if (darkMode) {
-            body.classList.add('dark', 'bg-gray-900', 'text-gray-100');
-            circle.style.transform = 'translateX(32px)';
-            icon.innerHTML = '<path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>';
-        } else {
-            body.classList.remove('dark', 'bg-gray-900', 'text-gray-100');
-            circle.style.transform = 'translateX(0)';
-            icon.innerHTML = '<path d="M10 15a5 5 0 100-10 5 5 0 000 10z"/>';
-        }
-        
-        localStorage.setItem('theme', darkMode ? 'dark' : 'light');
-    }
-
-    // ==================== FIREBASE ====================
-    function loadData() {
-        updateSyncStatus('syncing', 'Загрузка...');
-        
-        const homeworkRef = database.ref('homework');
-        
-        homeworkRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                homework = data;
-                renderAll();
-                updateSyncStatus('online', `Обновлено: ${new Date().toLocaleTimeString()}`);
-                localStorage.setItem('diaryHomework', JSON.stringify(homework));
-            } else {
-                createInitialData();
-            }
-        }, (error) => {
-            console.error('Ошибка загрузки:', error);
-            loadFromLocal();
-        });
-    }
-
-    function saveData() {
-        updateSyncStatus('syncing', 'Сохранение...');
-        
-        database.ref('homework').set(homework)
-            .then(() => {
-                updateSyncStatus('online', '✅ Сохранено!');
-                localStorage.setItem('diaryHomework', JSON.stringify(homework));
-            })
-            .catch((error) => {
-                console.error('Ошибка сохранения:', error);
-                updateSyncStatus('offline', '❌ Ошибка сохранения');
-                localStorage.setItem('diaryHomework', JSON.stringify(homework));
-            });
-    }
-
-    function createInitialData() {
-        const initialData = {};
-        
-        Object.keys(lessons).forEach(day => {
-            initialData[day] = {};
-            lessons[day].forEach(subject => {
-                initialData[day][subject] = "";
-            });
-        });
-        
-        database.ref('homework').set(initialData)
-            .then(() => {
-                homework = initialData;
-                renderAll();
-            });
-    }
-
-    function loadFromLocal() {
-        const saved = localStorage.getItem('diaryHomework');
-        if (saved) {
-            homework = JSON.parse(saved);
-            renderAll();
-            updateSyncStatus('offline', 'Локальные данные');
-        }
-    }
-
-    function updateSyncStatus(status, message) {
-        const statusElement = document.getElementById('onlineStatus');
-        const syncStatus = document.getElementById('syncStatus');
-        
-        if (syncStatus) syncStatus.textContent = message;
-        
-        if (statusElement) {
-            let html = '';
-            switch(status) {
-                case 'online': html = '<span class="online-dot online"></span><span>онлайн</span>'; break;
-                case 'offline': html = '<span class="online-dot offline"></span><span>оффлайн</span>'; break;
-                case 'syncing': html = '<span class="online-dot syncing"></span><span>синхронизация...</span>'; break;
-            }
-            statusElement.innerHTML = html;
-        }
-    }
-
-    function forceSync() {
-        const button = document.querySelector('#syncButtonContainer button');
-        const originalText = button.textContent;
-        
-        button.textContent = "⏳ Синхронизация...";
-        button.disabled = true;
-        
-        loadData();
-        
-        setTimeout(() => {
-            button.textContent = originalText;
-            button.disabled = false;
-        }, 1000);
-    }
-
-    // ==================== РЕНДЕРИНГ ====================
-    function renderLessons(containerId, daySubjects) {
-        const container = document.getElementById(containerId);
-        container.innerHTML = "";
-        
-        daySubjects.forEach(subject => {
-            const row = document.createElement("div");
-            row.className = "subject-row flex justify-between items-center p-3";
-            row.onclick = () => {};
-            
-            const left = document.createElement("div");
-            left.className = "flex-1 pr-2";
-            left.textContent = subject;
-            
-            const right = document.createElement("div");
-            right.className = "flex items-center space-x-2";
-            
-            const currentHW = homework[containerId] && homework[containerId][subject];
-            if (currentHW) {
-                const dzIcon = document.createElement("span");
-                dzIcon.className = "text-yellow-300 text-sm cursor-pointer";
-                dzIcon.textContent = "📝";
-                dzIcon.title = "Посмотреть ДЗ";
-                dzIcon.onclick = (e) => {
-                    e.stopPropagation();
-                    openModal(subject, currentHW);
-                };
-                right.appendChild(dzIcon);
-            }
-            
-            if (isAdmin) {
-                const editBtn = document.createElement("button");
-                editBtn.className = "text-blue-300 hover:text-blue-100 text-sm";
-                editBtn.textContent = "✏️";
-                editBtn.title = "Редактировать ДЗ";
-                editBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    editHW(subject, containerId);
-                };
-                right.appendChild(editBtn);
-            }
-            
-            row.appendChild(left);
-            row.appendChild(right);
-            container.appendChild(row);
-        });
-    }
-
-    function renderAll() {
-        renderLessons("mon", lessons.mon);
-        renderLessons("tue", lessons.tue);
-        renderLessons("wed", lessons.wed);
-        renderLessons("thu", lessons.thu);
-        renderLessons("fri", lessons.fri);
-        
-        document.getElementById('syncButtonContainer').classList.toggle('hidden', !isAdmin);
-    }
-
-    function editHW(subject, day) {
-        currentEditingSubject = subject;
-        currentEditingDay = day;
-        const currentHW = homework[day] && homework[day][subject] || "";
-        
-        const textOnly = currentHW.replace(/!\[Image\]\(data:image\/[^)]+\)/g, '').trim();
-        
-        document.getElementById('editSubject').textContent = subject;
-        document.getElementById('homeworkText').value = textOnly;
-        document.getElementById('uploadedImagePreview').classList.add('hidden');
-        uploadedImage = null;
-        
-        openEditModal();
-    }
-
-    function saveHomework() {
-        const text = document.getElementById('homeworkText').value;
-        
-        if (!homework[currentEditingDay]) {
-            homework[currentEditingDay] = {};
-        }
-        
-        let hwContent = text;
-        if (uploadedImage) {
-            hwContent += `\n\n![Image](${uploadedImage})`;
-        }
-        
-        homework[currentEditingDay][currentEditingSubject] = hwContent;
-        saveData();
-        closeEditModal();
-        renderAll();
-    }
-
-    // ==================== ОБРАБОТКА КОНТЕНТА ====================
-    function formatContent(content) {
-        if (!content) return '<span class="text-gray-500">Домашнее задание не задано</span>';
-        
-        let formattedContent = content;
-        
-        formattedContent = formattedContent.replace(
-            /(https?:\/\/[^\s]+)/g, 
-            '<a href="$1" target="_blank" class="content-link">$1</a>'
-        );
-        
-        formattedContent = formattedContent.replace(
-            /!\[Image\]\((data:image\/[^)]+)\)/g,
-            '<img src="$1" class="content-image" alt="Загруженное изображение">'
-        );
-        
-        formattedContent = formattedContent.replace(/\n/g, '<br>');
-        
-        return formattedContent;
-    }
-
-    // ==================== МОДАЛКИ ====================
-    function openModal(subject, content) {
-        document.getElementById("dzContent").innerHTML = `
-            <h3 class="font-semibold text-lg mb-2">${subject}</h3>
-            <div class="whitespace-pre-wrap">${formatContent(content)}</div>
-        `;
-        document.getElementById("dzModal").classList.remove("hidden");
-        setTimeout(() => document.querySelector("#dzModal .modal").classList.add("show"), 10);
-    }
-
-    function closeModal() {
-        const modal = document.querySelector("#dzModal .modal");
-        modal.classList.remove("show");
-        setTimeout(() => document.getElementById("dzModal").classList.add("hidden"), 250);
-    }
-
-    function openEditModal() {
-        document.getElementById("editModal").classList.remove("hidden");
-        setTimeout(() => document.querySelector("#editModal .modal").classList.add("show"), 10);
-    }
-
-    function closeEditModal() {
-        const modal = document.querySelector("#editModal .modal");
-        modal.classList.remove("show");
-        setTimeout(() => document.getElementById("editModal").classList.add("hidden"), 250);
-    }
-
-    function openChangelog() {
-        document.getElementById("changelogModal").classList.remove("hidden");
-        setTimeout(() => document.querySelector("#changelogModal .modal").classList.add("show"), 10);
-    }
-
-    function closeChangelog() {
-        const modal = document.querySelector("#changelogModal .modal");
-        modal.classList.remove("show");
-        setTimeout(() => document.getElementById("changelogModal").classList.add("hidden"), 250);
-    }
-
-    // ==================== ЗАГРУЗКА ИЗОБРАЖЕНИЙ ====================
-    function setupImageUpload() {
-        const uploadArea = document.getElementById('imageUpload');
-        const fileInput = document.getElementById('imageInput');
-        const imagePreview = document.getElementById('uploadedImagePreview');
-        
-        uploadArea.addEventListener('click', () => {
-            fileInput.click();
-        });
-        
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-        
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-        
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleImageUpload(files[0]);
-            }
-        });
-        
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                handleImageUpload(e.target.files[0]);
-            }
-        });
-    }
-    
-    function handleImageUpload(file) {
-        if (!file.type.startsWith('image/')) {
-            showNotification('❌ Пожалуйста, выберите изображение', 'error');
-            return;
-        }
-        
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            uploadedImage = e.target.result;
-            const imagePreview = document.getElementById('uploadedImagePreview');
-            imagePreview.src = uploadedImage;
-            imagePreview.classList.remove('hidden');
-        };
-        reader.readAsDataURL(file);
-    }
-
-    // ==================== ЗАПУСК ====================
-    window.onload = () => {
-        const savedTheme = localStorage.getItem('theme');
-        darkMode = savedTheme === 'dark';
-        applyTheme();
-        
-        loadData();
-        
-        setupDevToolsProtection();
-        
-        setupImageUpload();
-        
-        window.addEventListener('online', loadData);
-        window.addEventListener('offline', () => {
-            updateSyncStatus('offline', 'Оффлайн режим');
-        });
-    };
-
-    window.addEventListener('click', (e) => {
-        if (e.target.id === 'dzModal') closeModal();
-        if (e.target.id === 'editModal') closeEditModal();
-        if (e.target.id === 'changelogModal') closeChangelog();
-    });
-  </script>
-</body>
-</html><!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Дневник</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Подключаем Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-  <style>
-    .modal { 
-      opacity: 0; transform: scale(0.97); 
-      transition: opacity 0.25s ease, transform 0.25s ease; 
-    }
-    .modal.show { opacity: 1; transform: scale(1); }
-    .online-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-    .online { background-color: #10B981; }
-    .offline { background-color: #EF4444; }
-    .syncing { background-color: #F59E0B; }
-    
-    /* Уведомления */
-    .notification {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 12px 24px;
-      border-radius: 8px;
-      color: white;
-      font-weight: 500;
-      z-index: 1000;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-    .notification.show {
-      opacity: 1;
-    }
-    .notification.success {
-      background-color: #10B981;
-    }
-    .notification.error {
-      background-color: #EF4444;
-    }
-
-    /* Стиль для поля пароля в темной теме */
-    .dark #adminPassword {
-      color: black;
-      background-color: white;
-    }
-
-    .subject-row {
-      cursor: pointer;
-      transition: background-color 0.2s;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .subject-row:hover {
-      background-color: rgba(255, 255, 255, 0.1);
-    }
-
-    .subject-row:last-child {
-      border-bottom: none;
-    }
-
-    /* Стили для загрузки изображений */
-    .image-upload {
-      border: 2px dashed #ccc;
-      border-radius: 8px;
-      padding: 20px;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color 0.3s;
-    }
-
-    .image-upload:hover {
-      border-color: #3b82f6;
-    }
-
-    .image-upload.dragover {
-      border-color: #3b82f6;
-      background-color: #f0f9ff;
-    }
-
-    .uploaded-image {
-      max-width: 100%;
-      max-height: 200px;
-      margin-top: 10px;
-      border-radius: 4px;
-    }
-
-    /* Стили для ссылок в контенте */
-    .content-link {
-      color: #3b82f6;
-      text-decoration: underline;
-    }
-
-    .content-link:hover {
-      color: #2563eb;
-    }
-
-    /* Стили для изображений в контенте */
-    .content-image {
-      max-width: 100%;
-      max-height: 300px;
-      border-radius: 8px;
-      margin: 10px 0;
-      display: block;
-    }
-  </style>
-</head>
-<body class="bg-gray-200 min-h-screen p-6 transition-colors duration-300">
-
-  <!-- Уведомления -->
-  <div id="notification" class="notification hidden"></div>
-
-  <!-- Шапка -->
-  <div class="flex justify-center items-center mb-4 relative">
-    <h1 class="text-2xl font-bold">📚 Дневник</h1>
-    <div id="onlineStatus" class="absolute left-4 top-0 text-sm flex items-center">
-      <span class="online-dot online"></span>
-      <span>онлайн</span>
-    </div>
-    <div id="syncStatus" class="absolute right-4 top-0 text-sm text-gray-600">
-      Загрузка...
-    </div>
-  </div>
-
-  <!-- Админ панель -->
-  <div class="absolute top-4 left-4 flex flex-col items-start z-40">
-    <button onclick="toggleAdminLogin()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">Админ</button>
-    <div id="adminLogin" class="mt-3 space-x-2 flex justify-center items-center hidden bg-white p-3 rounded shadow-lg">
-      <input id="adminPassword" type="password" placeholder="Пароль" class="border p-2 rounded w-32">
-      <button onclick="loginAdmin()" class="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">Войти</button>
-    </div>
-  </div>
-
-  <!-- Кнопка синхронизации (только для админов) -->
-  <div id="syncButtonContainer" class="absolute top-4 left-40 flex flex-col items-start z-40 hidden">
-    <button onclick="forceSync()" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
-      🔄 Синхронизировать
-    </button>
-  </div>
-
-  <!-- Переключатель темы -->
-  <div class="fixed bottom-4 left-4">
-    <div id="themeToggle" onclick="toggleTheme()" class="w-16 h-8 flex items-center bg-gray-400 rounded-full p-1 cursor-pointer transition">
-      <div id="themeCircle" class="w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center transition-transform duration-300">
-        <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M10 15a5 5 0 100-10 5 5 0 000 10z"/>
-        </svg>
-      </div>
-    </div>
-  </div>
-
-  <!-- Changelog ссылка -->
-  <div class="fixed bottom-2 right-4 text-gray-500 text-sm text-right">
-    <a href="#" onclick="openChangelog()" class="text-sky-500 hover:text-sky-600 underline">Changelog</a>
-  </div>
-
-  <!-- Сетка дней -->
-  <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mt-6">
-    <!-- Понедельник -->
-    <div class="bg-gray-800 text-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
-      <div class="flex border-b border-gray-700">
-        <h2 class="font-bold text-lg text-red-400 p-3 flex-1">Понедельник</h2>
-        <div class="flex items-center border-l border-gray-600 px-3"><span>ДЗ</span></div>
-      </div>
-      <div class="flex-1" id="mon"></div>
-    </div>
-    
-    <!-- Вторник -->
-    <div class="bg-gray-800 text-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
-      <div class="flex border-b border-gray-700">
-        <h2 class="font-bold text-lg text-blue-400 p-3 flex-1">Вторник</h2>
-        <div class="flex items-center border-l border-gray-600 px-3"><span>ДЗ</span></div>
-      </div>
-      <div class="flex-1" id="tue"></div>
-    </div>
-    
-    <!-- Среда -->
-    <div class="bg-gray-800 text-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
-      <div class="flex border-b border-gray-700">
-        <h2 class="font-bold text-lg text-green-400 p-3 flex-1">Среда</h2>
-        <div class="flex items-center border-l border-gray-600 px-3"><span>ДЗ</span></div>
-      </div>
-      <div class="flex-1" id="wed"></div>
-    </div>
-    
-    <!-- Четверг -->
-    <div class="bg-gray-800 text-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
-      <div class="flex border-b border-gray-700">
-        <h2 class="font-bold text-lg text-purple-400 p-3 flex-1">Четверг</h2>
-        <div class="flex items-center border-l border-gray-600 px-3"><span>ДЗ</span></div>
-      </div>
-      <div class="flex-1" id="thu"></div>
-    </div>
-    
-    <!-- Пятница -->
-    <div class="bg-gray-800 text-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
-      <div class="flex border-b border-gray-700">
-        <h2 class="font-bold text-lg text-pink-400 p-3 flex-1">Пятница</h2>
-        <div class="flex items-center border-l border-gray-600 px-3"><span>ДЗ</span></div>
-      </div>
-      <div class="flex-1" id="fri"></div>
-    </div>
-  </div>
-
-  <!-- Модалка для ДЗ -->
-  <div id="dzModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="modal bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl w-11/12 max-w-3xl relative">
-      <button onclick="closeModal()" class="absolute top-2 right-2 text-2xl text-gray-500 hover:text-red-500">✖</button>
-      <h2 class="text-xl font-bold mb-4 dark:text-white">Домашнее задание</h2>
-      <div id="dzContent" class="prose max-w-none dark:text-white"></div>
-    </div>
-  </div>
-
-  <!-- Модалка для редактирования ДЗ -->
-  <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="modal bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl w-11/12 max-w-3xl relative">
-      <button onclick="closeEditModal()" class="absolute top-2 right-2 text-2xl text-gray-500 hover:text-red-500">✖</button>
-      <h2 id="editSubject" class="text-xl font-bold mb-4 dark:text-white"></h2>
+  <!-- Модалка для доната -->
+  <div id="donateModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="modal bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl w-11/12 max-w-md relative">
+      <button onclick="closeDonateModal()" class="absolute top-2 right-2 text-2xl text-gray-500 hover:text-red-500">✖</button>
+      <h2 class="text-xl font-bold mb-4 dark:text-white text-center">💝 Поддержка проекта</h2>
       
-      <textarea id="homeworkText" placeholder="Введите домашнее задание..." class="w-full p-3 border rounded mb-4 dark:bg-gray-700 dark:text-white dark:border-gray-600" rows="4"></textarea>
-      
-      <div class="image-upload mb-4" id="imageUpload">
-        <p>📁 Перетащите сюда изображение или нажмите для выбора</p>
-        <input type="file" id="imageInput" accept="image/*" class="hidden">
-        <img id="uploadedImagePreview" class="uploaded-image hidden">
+      <div class="donate-modal-content dark:text-white">
+        <div class="donate-warning">❗Стоп, стоп. Эта ссылка ведёт для пожертвований и продвижения проекта.❗</div>
+        
+        <p class="mb-4">Если вы действительно хотите пожертвовать, то обратитесь сюда:</p>
+        
+        <div class="donate-contact">
+          <span class="donate-username">@DonateDiary</span>
+          <p class="text-sm mt-1">Telegram</p>
+        </div>
+        
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-4">
+          Ваша поддержка поможет развивать проект и добавлять новые функции!
+        </p>
       </div>
       
-      <div class="flex justify-end">
-        <button onclick="saveHomework()" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Готово</button>
+      <div class="flex justify-center mt-6">
+        <button onclick="closeDonateModal()" class="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
+          Понятно
+        </button>
       </div>
     </div>
   </div>
@@ -1004,8 +343,6 @@
     let currentEditingSubject = null;
     let currentEditingDay = null;
     let uploadedImage = null;
-    let loginAttempts = 0;
-    const MAX_ATTEMPTS = 5;
     
     const lessons = {
       mon: ["Алгебра","РОВ","Химия","География","Английский язык","Физика","Биология"],
@@ -1015,454 +352,426 @@
       fri: ["Общество","Технология","Алгебра","Английский язык","Биология","ОБЖ","История"]
     };
 
-    // ==================== ЗАЩИТА АДМИН ПАНЕЛИ ====================
-
-    // Хеширование пароля с солью
-    async function hashPassword(password) {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(password + 'school_diary_salt_2024');
-        const hash = await crypto.subtle.digest('SHA-256', data);
-        return Array.from(new Uint8Array(hash))
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join('');
+    // ==================== МОДАЛКИ ДОНАТА ====================
+    function openDonateModal() {
+      document.getElementById("donateModal").classList.remove("hidden");
+      setTimeout(() => document.querySelector("#donateModal .modal").classList.add("show"), 10);
     }
 
-    // Защита от DevTools
-    function setupDevToolsProtection() {
-        // Блокировка горячих клавиш
-        document.addEventListener('keydown', (e) => {
-            // F12, Ctrl+Shift+I, Ctrl+Shift+C, Ctrl+U
-            if (e.key === 'F12' || 
-                (e.ctrlKey && e.shiftKey && e.key === 'I') ||
-                (e.ctrlKey && e.shiftKey && e.key === 'C') ||
-                (e.ctrlKey && e.key === 'U')) {
-                e.preventDefault();
-                showNotification('❌ Эта функция заблокирована для безопасности', 'error');
-                return false;
-            }
-        });
-        
-        // Блокировка правого клика
-        document.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            showNotification('❌ Контекстное меню отключено', 'error');
-            return false;
-        });
-
-        // Дополнительная защита - обнаружение открытия DevTools
-        setInterval(() => {
-            const widthThreshold = window.outerWidth - window.innerWidth > 160;
-            const heightThreshold = window.outerHeight - window.innerHeight > 160;
-            
-            if (widthThreshold || heightThreshold) {
-                showNotification('❌ Инструменты разработчика заблокированы', 'error');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            }
-        }, 1000);
+    function closeDonateModal() {
+      const modal = document.querySelector("#donateModal .modal");
+      modal.classList.remove("show");
+      setTimeout(() => document.getElementById("donateModal").classList.add("hidden"), 250);
     }
 
-    // Защищенный вход в админку
-    async function loginAdmin() {
-        if (loginAttempts >= MAX_ATTEMPTS) {
-            showNotification('❌ Слишком много попыток. Попробуйте позже.', 'error');
-            return;
-        }
-        
-        const password = document.getElementById('adminPassword').value;
-        
-        if (!password.trim()) {
-            showNotification('❌ Введите пароль', 'error');
-            return;
-        }
-        
-        // Хешируем введенный пароль и сравниваем с хешем правильного пароля
-        const inputHash = await hashPassword(password);
-        const correctHash = await hashPassword("7777"); // Ваш пароль
-        
-        if (inputHash === correctHash) {
-            isAdmin = true;
-            loginAttempts = 0;
-            document.getElementById('adminLogin').classList.add('hidden');
-            document.getElementById('syncButtonContainer').classList.remove('hidden');
-            showNotification('✅ Вы вошли как администратор', 'success');
-            renderAll();
-        } else {
-            loginAttempts++;
-            const remaining = MAX_ATTEMPTS - loginAttempts;
-            showNotification(`❌ Неверный пароль. Осталось попыток: ${remaining}`, 'error');
-            
-            if (loginAttempts >= MAX_ATTEMPTS) {
-                setTimeout(() => {
-                    loginAttempts = 0;
-                    showNotification('✅ Блокировка снята. Можете попробовать снова.', 'success');
-                }, 5 * 60 * 1000);
-            }
-        }
-        
-        document.getElementById('adminPassword').value = "";
-    }
-
-    function toggleAdminLogin() {
-        document.getElementById('adminLogin').classList.toggle('hidden');
+    // Звуковые эффекты
+    function playSound(soundName) {
+      try {
+        const audio = new Audio(`${soundName}.wav`);
+        audio.play().catch(e => console.log('Не удалось воспроизвести звук:', e));
+      } catch (error) {
+        console.log('Ошибка воспроизведения звука:', error);
+      }
     }
 
     // ==================== УВЕДОМЛЕНИЯ ====================
     function showNotification(message, type = 'success') {
-        const notification = document.getElementById('notification');
-        notification.textContent = message;
-        notification.className = `notification ${type} show`;
-        
-        setTimeout(() => {
-            notification.classList.remove('show');
-            setTimeout(() => notification.classList.add('hidden'), 300);
-        }, 3000);
+      const notification = document.getElementById('notification');
+      notification.textContent = message;
+      notification.className = `notification ${type} show`;
+      
+      setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.classList.add('hidden'), 300);
+      }, 3000);
     }
 
-    // ==================== ТЕМНАЯ ТЕМА ====================
+    // ==================== ТЕМНАя ТЕМА ====================
     function toggleTheme() {
-        darkMode = !darkMode;
-        applyTheme();
+      darkMode = !darkMode;
+      applyTheme();
+      
+      // Воспроизводим звук при переключении темы
+      if (darkMode) {
+        playSound('enable');
+      } else {
+        playSound('disable');
+      }
     }
 
     function applyTheme() {
-        const body = document.body;
-        const circle = document.getElementById('themeCircle');
-        const icon = document.getElementById('themeIcon');
-        
-        if (darkMode) {
-            body.classList.add('dark', 'bg-gray-900', 'text-gray-100');
-            circle.style.transform = 'translateX(32px)';
-            icon.innerHTML = '<path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>';
-        } else {
-            body.classList.remove('dark', 'bg-gray-900', 'text-gray-100');
-            circle.style.transform = 'translateX(0)';
-            icon.innerHTML = '<path d="M10 15a5 5 0 100-10 5 5 0 000 10z"/>';
-        }
-        
-        localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+      const body = document.body;
+      const circle = document.getElementById('themeCircle');
+      const icon = document.getElementById('themeIcon');
+      
+      if (darkMode) {
+        body.classList.add('dark', 'bg-gray-900', 'text-gray-100');
+        circle.style.transform = 'translateX(32px)';
+        icon.innerHTML = '<path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>';
+      } else {
+        body.classList.remove('dark', 'bg-gray-900', 'text-gray-100');
+        circle.style.transform = 'translateX(0)';
+        icon.innerHTML = '<path d="M10 15a5 5 0 100-10 5 5 0 000 10z"/>';
+      }
+      
+      localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+    }
+
+    // ==================== АДМИН ПАНЕЛЬ ====================
+    function toggleAdminLogin() {
+      const adminLogin = document.getElementById('adminLogin');
+      adminLogin.classList.toggle('hidden');
+    }
+
+    function loginAdmin() {
+      const password = document.getElementById('adminPassword').value;
+      
+      if (password === "7777") {
+        isAdmin = true;
+        document.getElementById('syncButtonContainer').classList.remove('hidden');
+        document.getElementById('adminLogin').classList.add('hidden');
+        showNotification('✅ Вы вошли как администратор', 'success');
+        renderAll();
+      } else {
+        showNotification('❌ Неверный пароль', 'error');
+      }
+      
+      document.getElementById('adminPassword').value = "";
     }
 
     // ==================== FIREBASE ====================
     function loadData() {
-        updateSyncStatus('syncing', 'Загрузка...');
-        
-        const homeworkRef = database.ref('homework');
-        
-        homeworkRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                homework = data;
-                renderAll();
-                updateSyncStatus('online', `Обновлено: ${new Date().toLocaleTimeString()}`);
-                localStorage.setItem('diaryHomework', JSON.stringify(homework));
-            } else {
-                createInitialData();
-            }
-        }, (error) => {
-            console.error('Ошибка загрузки:', error);
-            loadFromLocal();
-        });
+      updateSyncStatus('syncing', 'Загрузка...');
+      
+      const homeworkRef = database.ref('homework');
+      
+      homeworkRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          homework = data;
+          renderAll();
+          updateSyncStatus('online', `Обновлено: ${new Date().toLocaleTimeString()}`);
+          localStorage.setItem('diaryHomework', JSON.stringify(homework));
+        } else {
+          createInitialData();
+        }
+      }, (error) => {
+        console.error('Ошибка загрузки:', error);
+        loadFromLocal();
+      });
     }
 
     function saveData() {
-        updateSyncStatus('syncing', 'Сохранение...');
-        
-        database.ref('homework').set(homework)
-            .then(() => {
-                updateSyncStatus('online', '✅ Сохранено!');
-                localStorage.setItem('diaryHomework', JSON.stringify(homework));
-            })
-            .catch((error) => {
-                console.error('Ошибка сохранения:', error);
-                updateSyncStatus('offline', '❌ Ошибка сохранения');
-                localStorage.setItem('diaryHomework', JSON.stringify(homework));
-            });
+      updateSyncStatus('syncing', 'Сохранение...');
+      
+      database.ref('homework').set(homework)
+        .then(() => {
+          updateSyncStatus('online', '✅ Сохранено!');
+          localStorage.setItem('diaryHomework', JSON.stringify(homework));
+        })
+        .catch((error) => {
+          console.error('Ошибка сохранения:', error);
+          updateSyncStatus('offline', '❌ Ошибка сохранения');
+          localStorage.setItem('diaryHomework', JSON.stringify(homework));
+        });
     }
 
     function createInitialData() {
-        const initialData = {};
-        
-        Object.keys(lessons).forEach(day => {
-            initialData[day] = {};
-            lessons[day].forEach(subject => {
-                initialData[day][subject] = "";
-            });
+      const initialData = {};
+      
+      // Создаем структуру по дням и предметам
+      Object.keys(lessons).forEach(day => {
+        initialData[day] = {};
+        lessons[day].forEach(subject => {
+          initialData[day][subject] = "";
         });
-        
-        database.ref('homework').set(initialData)
-            .then(() => {
-                homework = initialData;
-                renderAll();
-            });
+      });
+      
+      database.ref('homework').set(initialData)
+        .then(() => {
+          homework = initialData;
+          renderAll();
+        });
     }
 
     function loadFromLocal() {
-        const saved = localStorage.getItem('diaryHomework');
-        if (saved) {
-            homework = JSON.parse(saved);
-            renderAll();
-            updateSyncStatus('offline', 'Локальные данные');
-        }
+      const saved = localStorage.getItem('diaryHomework');
+      if (saved) {
+        homework = JSON.parse(saved);
+        renderAll();
+        updateSyncStatus('offline', 'Локальные данные');
+      }
     }
 
     function updateSyncStatus(status, message) {
-        const statusElement = document.getElementById('onlineStatus');
-        const syncStatus = document.getElementById('syncStatus');
-        
-        if (syncStatus) syncStatus.textContent = message;
-        
-        if (statusElement) {
-            let html = '';
-            switch(status) {
-                case 'online': html = '<span class="online-dot online"></span><span>онлайн</span>'; break;
-                case 'offline': html = '<span class="online-dot offline"></span><span>оффлайн</span>'; break;
-                case 'syncing': html = '<span class="online-dot syncing"></span><span>синхронизация...</span>'; break;
-            }
-            statusElement.innerHTML = html;
+      const statusElement = document.getElementById('onlineStatus');
+      const syncStatus = document.getElementById('syncStatus');
+      
+      if (syncStatus) syncStatus.textContent = message;
+      
+      if (statusElement) {
+        let html = '';
+        switch(status) {
+          case 'online': html = '<span class="online-dot online"></span><span>онлайн</span>'; break;
+          case 'offline': html = '<span class="online-dot offline"></span><span>оффлайн</span>'; break;
+          case 'syncing': html = '<span class="online-dot syncing"></span><span>синхронизация...</span>'; break;
         }
+        statusElement.innerHTML = html;
+      }
     }
 
     function forceSync() {
-        const button = document.querySelector('#syncButtonContainer button');
-        const originalText = button.textContent;
-        
-        button.textContent = "⏳ Синхронизация...";
-        button.disabled = true;
-        
-        loadData();
-        
-        setTimeout(() => {
-            button.textContent = originalText;
-            button.disabled = false;
-        }, 1000);
+      const button = document.querySelector('#syncButtonContainer button');
+      const originalText = button.textContent;
+      
+      button.textContent = "⏳ Синхронизация...";
+      button.disabled = true;
+      
+      loadData();
+      
+      setTimeout(() => {
+        button.textContent = originalText;
+        button.disabled = false;
+      }, 1000);
     }
 
     // ==================== РЕНДЕРИНГ ====================
     function renderLessons(containerId, daySubjects) {
-        const container = document.getElementById(containerId);
-        container.innerHTML = "";
+      const container = document.getElementById(containerId);
+      container.innerHTML = "";
+      
+      daySubjects.forEach(subject => {
+        const row = document.createElement("div");
+        row.className = "subject-row flex justify-between items-center p-3";
+        row.onclick = () => {}; // Отключаем клик на всю строку
         
-        daySubjects.forEach(subject => {
-            const row = document.createElement("div");
-            row.className = "subject-row flex justify-between items-center p-3";
-            row.onclick = () => {};
-            
-            const left = document.createElement("div");
-            left.className = "flex-1 pr-2";
-            left.textContent = subject;
-            
-            const right = document.createElement("div");
-            right.className = "flex items-center space-x-2";
-            
-            const currentHW = homework[containerId] && homework[containerId][subject];
-            if (currentHW) {
-                const dzIcon = document.createElement("span");
-                dzIcon.className = "text-yellow-300 text-sm cursor-pointer";
-                dzIcon.textContent = "📝";
-                dzIcon.title = "Посмотреть ДЗ";
-                dzIcon.onclick = (e) => {
-                    e.stopPropagation();
-                    openModal(subject, currentHW);
-                };
-                right.appendChild(dzIcon);
-            }
-            
-            if (isAdmin) {
-                const editBtn = document.createElement("button");
-                editBtn.className = "text-blue-300 hover:text-blue-100 text-sm";
-                editBtn.textContent = "✏️";
-                editBtn.title = "Редактировать ДЗ";
-                editBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    editHW(subject, containerId);
-                };
-                right.appendChild(editBtn);
-            }
-            
-            row.appendChild(left);
-            row.appendChild(right);
-            container.appendChild(row);
-        });
+        const left = document.createElement("div");
+        left.className = "flex-1 pr-2";
+        left.textContent = subject;
+        
+        const right = document.createElement("div");
+        right.className = "flex items-center space-x-2";
+        
+        // Иконка ДЗ (появляется только если есть ДЗ)
+        const currentHW = homework[containerId] && homework[containerId][subject];
+        if (currentHW) {
+          const dzIcon = document.createElement("span");
+          dzIcon.className = "text-yellow-300 text-sm cursor-pointer";
+          dzIcon.textContent = "📝";
+          dzIcon.title = "Посмотреть ДЗ";
+          dzIcon.onclick = (e) => {
+            e.stopPropagation();
+            openModal(subject, currentHW);
+          };
+          right.appendChild(dzIcon);
+        }
+        
+        // Кнопка редактирования (только для админа)
+        if (isAdmin) {
+          const editBtn = document.createElement("button");
+          editBtn.className = "text-blue-300 hover:text-blue-100 text-sm";
+          editBtn.textContent = "✏️";
+          editBtn.title = "Редактировать ДЗ";
+          editBtn.onclick = (e) => {
+            e.stopPropagation();
+            editHW(subject, containerId);
+          };
+          right.appendChild(editBtn);
+        }
+        
+        row.appendChild(left);
+        row.appendChild(right);
+        container.appendChild(row);
+      });
     }
 
     function renderAll() {
-        renderLessons("mon", lessons.mon);
-        renderLessons("tue", lessons.tue);
-        renderLessons("wed", lessons.wed);
-        renderLessons("thu", lessons.thu);
-        renderLessons("fri", lessons.fri);
-        
-        document.getElementById('syncButtonContainer').classList.toggle('hidden', !isAdmin);
+      renderLessons("mon", lessons.mon);
+      renderLessons("tue", lessons.tue);
+      renderLessons("wed", lessons.wed);
+      renderLessons("thu", lessons.thu);
+      renderLessons("fri", lessons.fri);
+      
+      // Прячем кнопку синхронизации если не админ
+      document.getElementById('syncButtonContainer').classList.toggle('hidden', !isAdmin);
     }
 
     function editHW(subject, day) {
-        currentEditingSubject = subject;
-        currentEditingDay = day;
-        const currentHW = homework[day] && homework[day][subject] || "";
-        
-        const textOnly = currentHW.replace(/!\[Image\]\(data:image\/[^)]+\)/g, '').trim();
-        
-        document.getElementById('editSubject').textContent = subject;
-        document.getElementById('homeworkText').value = textOnly;
-        document.getElementById('uploadedImagePreview').classList.add('hidden');
-        uploadedImage = null;
-        
-        openEditModal();
+      currentEditingSubject = subject;
+      currentEditingDay = day;
+      const currentHW = homework[day] && homework[day][subject] || "";
+      
+      // Извлекаем только текст (без изображений) для редактирования
+      const textOnly = currentHW.replace(/!\[Image\]\(data:image\/[^)]+\)/g, '').trim();
+      
+      document.getElementById('editSubject').textContent = subject;
+      document.getElementById('homeworkText').value = textOnly;
+      document.getElementById('uploadedImagePreview').classList.add('hidden');
+      uploadedImage = null;
+      
+      openEditModal();
     }
 
     function saveHomework() {
-        const text = document.getElementById('homeworkText').value;
-        
-        if (!homework[currentEditingDay]) {
-            homework[currentEditingDay] = {};
-        }
-        
-        let hwContent = text;
-        if (uploadedImage) {
-            hwContent += `\n\n![Image](${uploadedImage})`;
-        }
-        
-        homework[currentEditingDay][currentEditingSubject] = hwContent;
-        saveData();
-        closeEditModal();
-        renderAll();
+      const text = document.getElementById('homeworkText').value;
+      
+      if (!homework[currentEditingDay]) {
+        homework[currentEditingDay] = {};
+      }
+      
+      let hwContent = text;
+      if (uploadedImage) {
+        hwContent += `\n\n![Image](${uploadedImage})`;
+      }
+      
+      homework[currentEditingDay][currentEditingSubject] = hwContent;
+      saveData();
+      closeEditModal();
+      renderAll();
     }
 
     // ==================== ОБРАБОТКА КОНТЕНТА ====================
     function formatContent(content) {
-        if (!content) return '<span class="text-gray-500">Домашнее задание не задано</span>';
-        
-        let formattedContent = content;
-        
-        formattedContent = formattedContent.replace(
-            /(https?:\/\/[^\s]+)/g, 
-            '<a href="$1" target="_blank" class="content-link">$1</a>'
-        );
-        
-        formattedContent = formattedContent.replace(
-            /!\[Image\]\((data:image\/[^)]+)\)/g,
-            '<img src="$1" class="content-image" alt="Загруженное изображение">'
-        );
-        
-        formattedContent = formattedContent.replace(/\n/g, '<br>');
-        
-        return formattedContent;
+      if (!content) return '<span class="text-gray-500">Домашнее задание не задано</span>';
+      
+      let formattedContent = content;
+      
+      // Преобразование URL в ссылки
+      formattedContent = formattedContent.replace(
+        /(https?:\/\/[^\s]+)/g, 
+        '<a href="$1" target="_blank" class="content-link">$1</a>'
+      );
+      
+      // Преобразование base64 изображений в теги <img>
+      formattedContent = formattedContent.replace(
+        /!\[Image\]\((data:image\/[^)]+)\)/g,
+        '<img src="$1" class="content-image" alt="Загруженное изображение">'
+      );
+      
+      // Сохранение переносов строк
+      formattedContent = formattedContent.replace(/\n/g, '<br>');
+      
+      return formattedContent;
     }
 
     // ==================== МОДАЛКИ ====================
     function openModal(subject, content) {
-        document.getElementById("dzContent").innerHTML = `
-            <h3 class="font-semibold text-lg mb-2">${subject}</h3>
-            <div class="whitespace-pre-wrap">${formatContent(content)}</div>
-        `;
-        document.getElementById("dzModal").classList.remove("hidden");
-        setTimeout(() => document.querySelector("#dzModal .modal").classList.add("show"), 10);
+      document.getElementById("dzContent").innerHTML = `
+        <h3 class="font-semibold text-lg mb-2">${subject}</h3>
+        <div class="whitespace-pre-wrap">${formatContent(content)}</div>
+      `;
+      document.getElementById("dzModal").classList.remove("hidden");
+      setTimeout(() => document.querySelector("#dzModal .modal").classList.add("show"), 10);
     }
 
     function closeModal() {
-        const modal = document.querySelector("#dzModal .modal");
-        modal.classList.remove("show");
-        setTimeout(() => document.getElementById("dzModal").classList.add("hidden"), 250);
+      const modal = document.querySelector("#dzModal .modal");
+      modal.classList.remove("show");
+      setTimeout(() => document.getElementById("dzModal").classList.add("hidden"), 250);
     }
 
     function openEditModal() {
-        document.getElementById("editModal").classList.remove("hidden");
-        setTimeout(() => document.querySelector("#editModal .modal").classList.add("show"), 10);
+      document.getElementById("editModal").classList.remove("hidden");
+      setTimeout(() => document.querySelector("#editModal .modal").classList.add("show"), 10);
     }
 
     function closeEditModal() {
-        const modal = document.querySelector("#editModal .modal");
-        modal.classList.remove("show");
-        setTimeout(() => document.getElementById("editModal").classList.add("hidden"), 250);
+      const modal = document.querySelector("#editModal .modal");
+      modal.classList.remove("show");
+      setTimeout(() => document.getElementById("editModal").classList.add("hidden"), 250);
     }
 
     function openChangelog() {
-        document.getElementById("changelogModal").classList.remove("hidden");
-        setTimeout(() => document.querySelector("#changelogModal .modal").classList.add("show"), 10);
+      document.getElementById("changelogModal").classList.remove("hidden");
+      setTimeout(() => document.querySelector("#changelogModal .modal").classList.add("show"), 10);
     }
 
     function closeChangelog() {
-        const modal = document.querySelector("#changelogModal .modal");
-        modal.classList.remove("show");
-        setTimeout(() => document.getElementById("changelogModal").classList.add("hidden"), 250);
+      const modal = document.querySelector("#changelogModal .modal");
+      modal.classList.remove("show");
+      setTimeout(() => document.getElementById("changelogModal").classList.add("hidden"), 250);
     }
 
     // ==================== ЗАГРУЗКА ИЗОБРАЖЕНИЙ ====================
     function setupImageUpload() {
-        const uploadArea = document.getElementById('imageUpload');
-        const fileInput = document.getElementById('imageInput');
-        const imagePreview = document.getElementById('uploadedImagePreview');
+      const uploadArea = document.getElementById('imageUpload');
+      const fileInput = document.getElementById('imageInput');
+      const imagePreview = document.getElementById('uploadedImagePreview');
+      
+      // Клик по области загрузки
+      uploadArea.addEventListener('click', () => {
+        fileInput.click();
+      });
+      
+      // Перетаскивание файлов
+      uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+      });
+      
+      uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+      });
+      
+      uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
         
-        uploadArea.addEventListener('click', () => {
-            fileInput.click();
-        });
-        
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-        
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-        
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleImageUpload(files[0]);
-            }
-        });
-        
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                handleImageUpload(e.target.files[0]);
-            }
-        });
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          handleImageUpload(files[0]);
+        }
+      });
+      
+      // Выбор файла через input
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+          handleImageUpload(e.target.files[0]);
+        }
+      });
     }
     
     function handleImageUpload(file) {
-        if (!file.type.startsWith('image/')) {
-            showNotification('❌ Пожалуйста, выберите изображение', 'error');
-            return;
-        }
-        
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            uploadedImage = e.target.result;
-            const imagePreview = document.getElementById('uploadedImagePreview');
-            imagePreview.src = uploadedImage;
-            imagePreview.classList.remove('hidden');
-        };
-        reader.readAsDataURL(file);
+      if (!file.type.startsWith('image/')) {
+        showNotification('❌ Пожалуйста, выберите изображение', 'error');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        uploadedImage = e.target.result;
+        const imagePreview = document.getElementById('uploadedImagePreview');
+        imagePreview.src = uploadedImage;
+        imagePreview.classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
     }
 
     // ==================== ЗАПУСК ====================
     window.onload = () => {
-        const savedTheme = localStorage.getItem('theme');
-        darkMode = savedTheme === 'dark';
-        applyTheme();
-        
-        loadData();
-        
-        setupDevToolsProtection();
-        
-        setupImageUpload();
-        
-        window.addEventListener('online', loadData);
-        window.addEventListener('offline', () => {
-            updateSyncStatus('offline', 'Оффлайн режим');
-        });
+      // Загружаем тему
+      const savedTheme = localStorage.getItem('theme');
+      darkMode = savedTheme === 'dark';
+      applyTheme();
+      
+      // Загружаем данные
+      loadData();
+      
+      // Настраиваем загрузку изображений
+      setupImageUpload();
+      
+      // Слушаем онлайн/оффлайн
+      window.addEventListener('online', loadData);
+      window.addEventListener('offline', () => {
+        updateSyncStatus('offline', 'Оффлайн режим');
+      });
     };
 
     window.addEventListener('click', (e) => {
-        if (e.target.id === 'dzModal') closeModal();
-        if (e.target.id === 'editModal') closeEditModal();
-        if (e.target.id === 'changelogModal') closeChangelog();
+      if (e.target.id === 'dzModal') closeModal();
+      if (e.target.id === 'editModal') closeEditModal();
+      if (e.target.id === 'donateModal') closeDonateModal();
+      if (e.target.id === 'changelogModal') closeChangelog();
     });
   </script>
 </body>
