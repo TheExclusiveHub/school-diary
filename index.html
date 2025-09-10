@@ -21,7 +21,7 @@
     .online-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
     .online { background-color: #10B981; }
     .offline { background-color: #EF4444; }
-    .syncing { background-color: #F59E0B; }
+    .away { background-color: #F59E0B; }
     
     /* Уведомления */
     .notification {
@@ -45,6 +45,9 @@
     }
     .notification.error {
       background-color: #EF4444;
+    }
+    .notification.warning {
+      background-color: #F59E0B;
     }
 
     /* Стиль для поля пароля */
@@ -144,33 +147,9 @@
     }
     .message-bubble.other {
       background: #374151;
-      border-bottom-left-radius: 4px;
     }
     .message-bubble.own {
       background: #3b82f6;
-      border-bottom-right-radius: 4px;
-    }
-    .message-bubble.other::after {
-      content: '';
-      position: absolute;
-      left: -6px;
-      bottom: 0;
-      width: 0;
-      height: 0;
-      border: 6px solid transparent;
-      border-right-color: #374151;
-      border-left: 0;
-    }
-    .message-bubble.own::after {
-      content: '';
-      position: absolute;
-      right: -6px;
-      bottom: 0;
-      width: 0;
-      height: 0;
-      border: 6px solid transparent;
-      border-left-color: #3b82f6;
-      border-right: 0;
     }
     .message-sender {
       font-weight: 600;
@@ -308,6 +287,23 @@
       border-radius: 8px;
       margin: 10px 0;
       user-select: none;
+    }
+    .user-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border-bottom: 1px solid #4b5563;
+    }
+    .user-status:last-child {
+      border-bottom: none;
+    }
+    .confirm-dialog {
+      background: #1f2937;
+      border: 2px solid #3b82f6;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
     }
   </style>
 </head>
@@ -491,24 +487,25 @@
       <div id="authSection" class="auth-section">
         <div class="auth-tabs">
           <div class="auth-tab active" onclick="switchAuthTab('register')">Регистрация</div>
-          <div class="auth-tab" onclick="switchAuthTab('login')">Авторизация</div>
+          <div class="auth-tab" onclick="switchAuthTab('login')">Вход</div>
         </div>
         
         <form id="registerForm" class="auth-form active">
-          <input type="text" id="regUsername" placeholder="Никнейм (4-12 символов)" class="w-full p-3 border rounded mb-3 bg-gray-700 text-white border-gray-600">
+          <input type="text" id="regLogin" placeholder="Логин (4-12 символов)" class="w-full p-3 border rounded mb-3 bg-gray-700 text-white border-gray-600">
+          <input type="text" id="regNickname" placeholder="Никнейм (4-12 символов)" class="w-full p-3 border rounded mb-3 bg-gray-700 text-white border-gray-600">
           <input type="password" id="regPassword" placeholder="Пароль" class="w-full p-3 border rounded mb-3 bg-gray-700 text-white border-gray-600">
           <input type="password" id="regConfirmPassword" placeholder="Повторите пароль" class="w-full p-3 border rounded mb-3 bg-gray-700 text-white border-gray-600">
           <div class="captcha-code" id="regCaptchaCode">ABCDEF</div>
           <input type="text" id="regCaptchaInput" placeholder="Введите код с картинки" class="w-full p-3 border rounded mb-4 bg-gray-700 text-white border-gray-600">
-          <button type="button" onclick="register()" class="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Зарегистрироваться</button>
+          <button type="button" onclick="showRegisterConfirm()" class="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Зарегистрироваться</button>
         </form>
         
         <form id="loginForm" class="auth-form">
-          <input type="text" id="loginUsername" placeholder="Никнейм" class="w-full p-3 border rounded mb-3 bg-gray-700 text-white border-gray-600">
+          <input type="text" id="loginUsername" placeholder="Логин" class="w-full p-3 border rounded mb-3 bg-gray-700 text-white border-gray-600">
           <input type="password" id="loginPassword" placeholder="Пароль" class="w-full p-3 border rounded mb-3 bg-gray-700 text-white border-gray-600">
           <div class="captcha-code" id="loginCaptchaCode">GHIJKL</div>
           <input type="text" id="loginCaptchaInput" placeholder="Введите код с картинки" class="w-full p-3 border rounded mb-4 bg-gray-700 text-white border-gray-600">
-          <button type="button" onclick="login()" class="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Войти</button>
+          <button type="button" onclick="login()" class="w-full px-4 py-2 bg-blue-500 text-white rounded hover:blue-600">Войти</button>
         </form>
       </div>
       
@@ -519,8 +516,13 @@
           <input type="file" id="avatarInput" accept="image/*" class="hidden" onchange="changeAvatar(this.files[0])">
         </div>
         
+        <div class="text-center mb-4">
+          <div class="text-sm text-gray-400">Логин:</div>
+          <div id="profileLogin" class="text-lg font-bold"></div>
+        </div>
+        
         <div class="nickname-edit">
-          <span id="profileUsername" class="text-xl font-bold"></span>
+          <span id="profileNickname" class="text-xl font-bold"></span>
           <button onclick="editNickname()" class="text-blue-400 hover:text-blue-300">✏️</button>
         </div>
         
@@ -529,6 +531,20 @@
           <button onclick="saveNickname()" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Сохранить</button>
           <button onclick="cancelEditNickname()" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 ml-2">Отмена</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модалка подтверждения регистрации -->
+  <div id="confirmRegisterModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="modal confirm-dialog w-11/12 max-w-md relative">
+      <button onclick="closeConfirmRegister()" class="absolute top-2 right-2 text-2xl text-gray-400 hover:text-red-400">✖</button>
+      <h2 class="text-xl font-bold mb-4 text-white">Подтверждение регистрации</h2>
+      <p class="text-gray-300 mb-2">Вы точно хотите зарегистрироваться с логином "<span id="confirmLogin" class="font-bold text-blue-400"></span>"?</p>
+      <p class="text-gray-300 mb-4 text-sm">После подтверждения регистрации, изменение логина невозможно. Поскольку только по логину вы сможете войти в аккаунт, а ваш никнейм можно будет поменять в профиле.</p>
+      <div class="flex space-x-2">
+        <button onclick="closeConfirmRegister()" class="flex-1 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">Отмена</button>
+        <button onclick="register()" class="flex-1 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Подтвердить</button>
       </div>
     </div>
   </div>
@@ -550,8 +566,11 @@
   <div id="usersModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="modal bg-gray-800 p-6 rounded-2xl shadow-xl w-11/12 max-w-md relative">
       <button onclick="closeUsersModal()" class="absolute top-2 right-2 text-2xl text-gray-400 hover:text-red-400">✖</button>
-      <h2 class="text-xl font-bold mb-4 text-white">👥 Пользователи онлайн</h2>
-      <div id="usersList" class="max-h-64 overflow-y-auto"></div>
+      <h2 class="text-xl font-bold mb-4 text-white">👥 Пользователи</h2>
+      <div class="text-sm text-gray-400 mb-2">Онлайн (<span id="onlineUsersCount">0</span>):</div>
+      <div id="onlineUsersList" class="max-h-48 overflow-y-auto mb-4"></div>
+      <div class="text-sm text-gray-400 mb-2">Не в сети:</div>
+      <div id="offlineUsersList" class="max-h-48 overflow-y-auto"></div>
     </div>
   </div>
 
@@ -584,9 +603,12 @@
     let deleteTimerInterval = null;
     let onlineUsers = {};
     let lastMessageTime = 0;
-    let messageCooldown = 5000; // 5 секунд
+    let messageCooldown = 10000; // 10 секунд
     let isLoggedIn = false;
     let currentUser = null;
+    let chatUsersRef = null;
+    let allUsersRef = null;
+    let isChatOpen = false;
     
     const lessons = {
       mon: ["Алгебра","РОВ","Химия","География","Английский язык","Физика","Биология"],
@@ -844,34 +866,46 @@
     // ==================== ЧАТ ====================
     function setupChat() {
       chatRef = database.ref('chat/messages');
-      onlineUsersRef = database.ref('onlineUsers');
-      userRef = onlineUsersRef.push();
+      onlineUsersRef = database.ref('chatOnlineUsers');
+      allUsersRef = database.ref('users');
+      chatUsersRef = database.ref('chatUsers');
       
-      const savedName = localStorage.getItem('chatUserName');
-      if (savedName) {
-        userName = savedName;
-      } else {
-        userName = "Гость_" + Math.floor(Math.random() * 1000);
-        localStorage.setItem('chatUserName', userName);
+      // Загружаем сохраненного пользователя
+      const savedUser = localStorage.getItem('currentUser');
+      if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+        isLoggedIn = true;
+        userName = currentUser.nickname || currentUser.login;
       }
       
-      userRef.set({
-        name: userName,
-        lastSeen: firebase.database.ServerValue.TIMESTAMP
-      });
+      userRef = onlineUsersRef.push();
       
       window.addEventListener('beforeunload', () => {
-        userRef.remove();
+        if (userRef) {
+          userRef.remove();
+        }
       });
       
+      // Слушаем онлайн пользователей в чате
       onlineUsersRef.on('value', (snapshot) => {
         onlineUsers = snapshot.val() || {};
-        const count = Object.keys(onlineUsers).length;
-        document.getElementById('onlineCount').textContent = count;
+        const onlineCount = Object.values(onlineUsers).filter(user => user.status === 'online').length;
+        document.getElementById('onlineCount').textContent = onlineCount;
       });
       
       loadChatMessages();
       startDeleteTimer();
+    }
+    
+    function updateUserStatus(status) {
+      if (userRef && currentUser) {
+        userRef.set({
+          login: currentUser.login,
+          nickname: currentUser.nickname,
+          status: status,
+          lastSeen: firebase.database.ServerValue.TIMESTAMP
+        });
+      }
     }
     
     function loadChatMessages() {
@@ -891,6 +925,7 @@
             }
           });
           
+          // Автопрокрутка вниз
           setTimeout(() => {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
           }, 100);
@@ -992,9 +1027,9 @@
     function updateSendButtonCooldown() {
       const button = document.getElementById('sendButton');
       button.disabled = true;
-      button.textContent = '5';
+      button.textContent = '10';
       
-      let secondsLeft = 5;
+      let secondsLeft = 10;
       const countdown = setInterval(() => {
         secondsLeft--;
         button.textContent = secondsLeft.toString();
@@ -1034,11 +1069,14 @@
         document.getElementById('chatInput').focus();
       }, 10);
       
-      if (userRef) {
-        userRef.update({
-          lastSeen: firebase.database.ServerValue.TIMESTAMP
-        });
-      }
+      isChatOpen = true;
+      updateUserStatus('online');
+      
+      // Автопрокрутка вниз при открытии
+      setTimeout(() => {
+        const messagesContainer = document.getElementById('chatMessages');
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }, 100);
     }
     
     function closeChat() {
@@ -1046,6 +1084,9 @@
       modal.classList.remove('show');
       setTimeout(() => document.getElementById('chatModal').classList.add('hidden'), 250);
       document.getElementById('stickerPicker').classList.add('hidden');
+      
+      isChatOpen = false;
+      updateUserStatus('away');
     }
 
     // ==================== СИСТЕМА АККАУНТОВ ====================
@@ -1058,6 +1099,20 @@
       // Генерируем новые каптчи
       document.getElementById('regCaptchaCode').textContent = generateCaptcha();
       document.getElementById('loginCaptchaCode').textContent = generateCaptcha();
+      
+      // Показываем соответствующую секцию
+      if (isLoggedIn && currentUser) {
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('profileSection').classList.remove('hidden');
+        document.getElementById('profileLogin').textContent = currentUser.login;
+        document.getElementById('profileNickname').textContent = currentUser.nickname;
+        if (currentUser.avatar) {
+          document.getElementById('profileAvatar').src = currentUser.avatar;
+        }
+      } else {
+        document.getElementById('authSection').classList.remove('hidden');
+        document.getElementById('profileSection').classList.add('hidden');
+      }
     }
     
     function closeAccountModal() {
@@ -1074,14 +1129,42 @@
       document.getElementById(tab === 'register' ? 'registerForm' : 'loginForm').classList.add('active');
     }
     
+    function showRegisterConfirm() {
+      const login = document.getElementById('regLogin').value.trim();
+      if (login.length < 4 || login.length > 12) {
+        showNotification('❌ Логин должен быть от 4 до 12 символов', 'error');
+        return;
+      }
+      
+      document.getElementById('confirmLogin').textContent = login;
+      document.getElementById('confirmRegisterModal').classList.remove('hidden');
+      setTimeout(() => {
+        document.querySelector('#confirmRegisterModal .modal').classList.add('show');
+      }, 10);
+    }
+    
+    function closeConfirmRegister() {
+      const modal = document.querySelector('#confirmRegisterModal .modal');
+      modal.classList.remove('show');
+      setTimeout(() => document.getElementById('confirmRegisterModal').classList.add('hidden'), 250);
+    }
+    
     function register() {
-      const username = document.getElementById('regUsername').value.trim();
+      closeConfirmRegister();
+      
+      const login = document.getElementById('regLogin').value.trim();
+      const nickname = document.getElementById('regNickname').value.trim();
       const password = document.getElementById('regPassword').value;
       const confirmPassword = document.getElementById('regConfirmPassword').value;
       const captchaInput = document.getElementById('regCaptchaInput').value;
       const captchaCode = document.getElementById('regCaptchaCode').textContent;
       
-      if (username.length < 4 || username.length > 12) {
+      if (login.length < 4 || login.length > 12) {
+        showNotification('❌ Логин должен быть от 4 до 12 символов', 'error');
+        return;
+      }
+      
+      if (nickname.length < 4 || nickname.length > 12) {
         showNotification('❌ Никнейм должен быть от 4 до 12 символов', 'error');
         return;
       }
@@ -1101,24 +1184,43 @@
         return;
       }
       
-      // Здесь должна быть логика регистрации через Firebase Auth
-      // Пока просто имитируем успешную регистрацию
-      showNotification('✅ Регистрация успешна!', 'success');
-      isLoggedIn = true;
-      currentUser = { username, avatar: 'account.png' };
-      
-      // Переключаем на профиль
-      document.getElementById('authSection').classList.add('hidden');
-      document.getElementById('profileSection').classList.remove('hidden');
-      document.getElementById('profileUsername').textContent = username;
-      document.getElementById('profileAvatar').src = 'account.png';
-      
-      // Сохраняем в localStorage
-      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      // Проверяем, существует ли уже пользователь с таким логином
+      allUsersRef.child(login).once('value').then((snapshot) => {
+        if (snapshot.exists()) {
+          showNotification('❌ Пользователь с таким логином уже существует', 'error');
+          return;
+        }
+        
+        // Сохраняем пользователя в базу данных
+        allUsersRef.child(login).set({
+          login: login,
+          nickname: nickname,
+          password: password, // В реальном приложении пароль должен быть хеширован!
+          avatar: 'account.png',
+          registeredAt: firebase.database.ServerValue.TIMESTAMP
+        }).then(() => {
+          showNotification('✅ Регистрация успешна!', 'success');
+          isLoggedIn = true;
+          currentUser = { login, nickname, avatar: 'account.png' };
+          userName = nickname;
+          
+          // Сохраняем в localStorage
+          localStorage.setItem('currentUser', JSON.stringify(currentUser));
+          
+          // Переключаем на профиль
+          document.getElementById('authSection').classList.add('hidden');
+          document.getElementById('profileSection').classList.remove('hidden');
+          document.getElementById('profileLogin').textContent = login;
+          document.getElementById('profileNickname').textContent = nickname;
+        }).catch((error) => {
+          showNotification('❌ Ошибка при регистрации', 'error');
+          console.error('Ошибка регистрации:', error);
+        });
+      });
     }
     
     function login() {
-      const username = document.getElementById('loginUsername').value.trim();
+      const login = document.getElementById('loginUsername').value.trim();
       const password = document.getElementById('loginPassword').value;
       const captchaInput = document.getElementById('loginCaptchaInput').value;
       const captchaCode = document.getElementById('loginCaptchaCode').textContent;
@@ -1128,20 +1230,41 @@
         return;
       }
       
-      // Здесь должна быть логика авторизации через Firebase Auth
-      // Пока просто имитируем успешный вход
-      showNotification('✅ Вход выполнен!', 'success');
-      isLoggedIn = true;
-      currentUser = { username, avatar: 'account.png' };
-      
-      // Переключаем на профиль
-      document.getElementById('authSection').classList.add('hidden');
-      document.getElementById('profileSection').classList.remove('hidden');
-      document.getElementById('profileUsername').textContent = username;
-      document.getElementById('profileAvatar').src = 'account.png';
-      
-      // Сохраняем в localStorage
-      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      // Проверяем пользователя в базе данных
+      allUsersRef.child(login).once('value').then((snapshot) => {
+        if (!snapshot.exists()) {
+          showNotification('❌ Пользователь не найден', 'error');
+          return;
+        }
+        
+        const userData = snapshot.val();
+        if (userData.password !== password) {
+          showNotification('❌ Неверный пароль', 'error');
+          return;
+        }
+        
+        showNotification('✅ Вход выполнен!', 'success');
+        isLoggedIn = true;
+        currentUser = {
+          login: userData.login,
+          nickname: userData.nickname,
+          avatar: userData.avatar || 'account.png'
+        };
+        userName = currentUser.nickname;
+        
+        // Сохраняем в localStorage
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        
+        // Переключаем на профиль
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('profileSection').classList.remove('hidden');
+        document.getElementById('profileLogin').textContent = currentUser.login;
+        document.getElementById('profileNickname').textContent = currentUser.nickname;
+        document.getElementById('profileAvatar').src = currentUser.avatar;
+      }).catch((error) => {
+        showNotification('❌ Ошибка при входе', 'error');
+        console.error('Ошибка входа:', error);
+      });
     }
     
     function changeAvatar(file) {
@@ -1156,6 +1279,11 @@
         if (currentUser) {
           currentUser.avatar = e.target.result;
           localStorage.setItem('currentUser', JSON.stringify(currentUser));
+          
+          // Обновляем в базе данных
+          allUsersRef.child(currentUser.login).update({
+            avatar: e.target.result
+          });
         }
         showNotification('✅ Аватар изменён!', 'success');
       };
@@ -1164,7 +1292,7 @@
     
     function editNickname() {
       document.getElementById('nicknameEdit').classList.remove('hidden');
-      document.getElementById('newNickname').value = document.getElementById('profileUsername').textContent;
+      document.getElementById('newNickname').value = document.getElementById('profileNickname').textContent;
     }
     
     function saveNickname() {
@@ -1175,12 +1303,18 @@
         return;
       }
       
-      document.getElementById('profileUsername').textContent = newNickname;
+      document.getElementById('profileNickname').textContent = newNickname;
       document.getElementById('nicknameEdit').classList.add('hidden');
       
       if (currentUser) {
-        currentUser.username = newNickname;
+        currentUser.nickname = newNickname;
+        userName = newNickname;
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        
+        // Обновляем в базе данных
+        allUsersRef.child(currentUser.login).update({
+          nickname: newNickname
+        });
       }
       
       showNotification('✅ Никнейм изменён!', 'success');
@@ -1194,22 +1328,53 @@
     function showOnlineUsers() {
       if (!isAdmin) return;
       
-      const usersList = document.getElementById('usersList');
-      usersList.innerHTML = '';
+      const onlineUsersList = document.getElementById('onlineUsersList');
+      const offlineUsersList = document.getElementById('offlineUsersList');
+      onlineUsersList.innerHTML = '';
+      offlineUsersList.innerHTML = '';
       
-      Object.entries(onlineUsers).forEach(([key, user]) => {
-        if (user.name) {
-          const userElement = document.createElement('div');
-          userElement.className = 'flex items-center justify-between p-3 border-b border-gray-600';
-          userElement.innerHTML = `
-            <div class="flex items-center gap-3">
-              <img src="account.png" class="w-8 h-8 rounded-full" alt="${user.name}">
-              <span>${user.name}</span>
-            </div>
-            <span class="text-green-400 text-sm">online</span>
-          `;
-          usersList.appendChild(userElement);
-        }
+      // Получаем всех пользователей из базы
+      allUsersRef.once('value').then((usersSnapshot) => {
+        const allUsers = usersSnapshot.val() || {};
+        
+        // Получаем онлайн пользователей из чата
+        onlineUsersRef.once('value').then((onlineSnapshot) => {
+          const chatOnlineUsers = onlineSnapshot.val() || {};
+          const onlineCount = Object.values(chatOnlineUsers).filter(user => user.status === 'online').length;
+          document.getElementById('onlineUsersCount').textContent = onlineCount;
+          
+          // Отображаем онлайн пользователей
+          Object.entries(chatOnlineUsers).forEach(([key, user]) => {
+            if (user.status === 'online') {
+              const userElement = document.createElement('div');
+              userElement.className = 'user-status';
+              userElement.innerHTML = `
+                <span class="online-dot online"></span>
+                <img src="${user.avatar || 'account.png'}" class="w-6 h-6 rounded-full">
+                <span>${user.nickname || user.login}</span>
+              `;
+              onlineUsersList.appendChild(userElement);
+            }
+          });
+          
+          // Отображаем оффлайн пользователей (все остальные)
+          Object.entries(allUsers).forEach(([login, userData]) => {
+            const isOnline = Object.values(chatOnlineUsers).some(onlineUser => 
+              onlineUser.login === login && onlineUser.status === 'online'
+            );
+            
+            if (!isOnline) {
+              const userElement = document.createElement('div');
+              userElement.className = 'user-status';
+              userElement.innerHTML = `
+                <span class="online-dot offline"></span>
+                <img src="${userData.avatar || 'account.png'}" class="w-6 h-6 rounded-full">
+                <span>${userData.nickname || login}</span>
+              `;
+              offlineUsersList.appendChild(userElement);
+            }
+          });
+        });
       });
       
       document.getElementById('usersModal').classList.remove('hidden');
@@ -1365,7 +1530,7 @@
     }
 
     function closeChangelog() {
-      const modal = document.querySelector("#changelogModal .modal");
+      const modal = document.querySelector("#changelogModal .modal');
       modal.classList.remove("show");
       setTimeout(() => document.getElementById("changelogModal").classList.add("hidden"), 250);
     }
@@ -1429,7 +1594,7 @@
       if (savedUser) {
         currentUser = JSON.parse(savedUser);
         isLoggedIn = true;
-        userName = currentUser.username;
+        userName = currentUser.nickname || currentUser.login;
       }
       
       loadData();
@@ -1449,6 +1614,7 @@
       if (e.target.id === 'changelogModal') closeChangelog();
       if (e.target.id === 'usersModal') closeUsersModal();
       if (e.target.id === 'accountModal') closeAccountModal();
+      if (e.target.id === 'confirmRegisterModal') closeConfirmRegister();
     });
   </script>
 </body>
