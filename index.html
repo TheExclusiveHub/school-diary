@@ -107,6 +107,69 @@
       margin: 10px 0;
       display: block;
     }
+
+    /* Стили для чата */
+    .chat-message {
+      margin-bottom: 8px;
+      padding: 6px 10px;
+      border-radius: 12px;
+      max-width: 85%;
+      word-break: break-word;
+      font-size: 0.9rem;
+    }
+    .chat-message.own {
+      background-color: #3b82f6;
+      color: white;
+      margin-left: auto;
+    }
+    .chat-message.other {
+      background-color: #e5e7eb;
+      color: black;
+    }
+    .chat-timestamp {
+      font-size: 0.65rem;
+      opacity: 0.7;
+      margin-top: 2px;
+      text-align: right;
+    }
+    
+    /* Стикеры */
+    .sticker-picker {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      background-color: #f3f4f6;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .dark .sticker-picker {
+      background-color: #374151;
+    }
+    .sticker-item {
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 8px;
+      transition: background-color 0.2s;
+    }
+    .sticker-item:hover {
+      background-color: #d1d5db;
+    }
+    .dark .sticker-item:hover {
+      background-color: #4b5563;
+    }
+    .sticker-img {
+      width: 100%;
+      height: auto;
+      border-radius: 5px;
+    }
+    .chat-sticker {
+      max-width: 120px;
+      max-height: 120px;
+      border-radius: 8px;
+    }
   </style>
 </head>
 <body class="bg-gray-200 min-h-screen p-6 transition-colors duration-300">
@@ -153,8 +216,15 @@
     </div>
   </div>
 
+  <!-- Кнопка чата -->
+  <div class="fixed bottom-4 right-4">
+    <button id="chatButton" onclick="toggleChat()" class="w-14 h-14 bg-blue-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-600 transition-colors">
+      💬
+    </button>
+  </div>
+
   <!-- Changelog ссылка -->
-  <div class="fixed bottom-2 right-4 text-gray-500 text-sm text-right">
+  <div class="fixed top-2 right-4 text-gray-500 text-sm text-right">
     <a href="#" onclick="openChangelog()" class="text-sky-500 hover:text-sky-600 underline">Changelog</a>
   </div>
 
@@ -235,6 +305,46 @@
     </div>
   </div>
 
+  <!-- Модалка чата -->
+  <div id="chatModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="modal bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl w-11/12 max-w-md relative flex flex-col h-4/5">
+      <button onclick="closeChat()" class="absolute top-2 right-2 text-2xl text-gray-500 hover:text-red-500">✖</button>
+      <h2 class="text-xl font-bold mb-2 dark:text-white flex items-center">
+        <span>💬 Онлайн-чат</span>
+        <span id="deleteTimer" class="ml-2 text-sm font-normal bg-blue-100 text-blue-800 px-2 py-1 rounded dark:bg-blue-900 dark:text-blue-200">
+          автоудаление через: 6:00:00
+        </span>
+      </h2>
+      
+      <div id="chatMessages" class="flex-1 overflow-y-auto mb-2 p-2 border rounded dark:border-gray-600"></div>
+      
+      <div id="stickerPicker" class="sticker-picker hidden">
+        <div class="sticker-item" onclick="sendSticker('sticker.png')"><img src="sticker.png" class="sticker-img" alt="Стикер 1"></div>
+        <div class="sticker-item" onclick="sendSticker('sticker1.png')"><img src="sticker1.png" class="sticker-img" alt="Стикер 2"></div>
+        <div class="sticker-item" onclick="sendSticker('sticker2.png')"><img src="sticker2.png" class="sticker-img" alt="Стикер 3"></div>
+        <div class="sticker-item" onclick="sendSticker('sticker3.png')"><img src="sticker3.png" class="sticker-img" alt="Стикер 4"></div>
+        <div class="sticker-item" onclick="sendSticker('sticker4.png')"><img src="sticker4.png" class="sticker-img" alt="Стикер 5"></div>
+        <div class="sticker-item" onclick="sendSticker('sticker5.png')"><img src="sticker5.png" class="sticker-img" alt="Стикер 6"></div>
+        <div class="sticker-item" onclick="sendSticker('sticker6.png')"><img src="sticker6.png" class="sticker-img" alt="Стикер 7"></div>
+        <div class="sticker-item" onclick="sendSticker('sticker7.png')"><img src="sticker7.png" class="sticker-img" alt="Стикер 8"></div>
+      </div>
+      
+      <div class="flex space-x-2">
+        <button id="stickerToggle" onclick="toggleStickerPicker()" class="px-3 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 dark:bg-gray-600 dark:text-white dark:hover:bg-gray-500">
+          😊
+        </button>
+        <input id="chatInput" type="text" placeholder="Введите сообщение..." 
+          class="flex-1 p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+          onkeypress="handleChatKeyPress(event)">
+        <button onclick="sendChatMessage()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">➤</button>
+      </div>
+      
+      <div class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+        <span id="onlineCount">0</span> пользователей онлайн
+      </div>
+    </div>
+  </div>
+
   <!-- Changelog модалка -->
   <div id="changelogModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="modal bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl w-11/12 max-w-3xl relative">
@@ -250,13 +360,13 @@
   <script>
     // ==================== КОНФИГУРАЦИЯ FIREBASE ====================
     const firebaseConfig = {
-  apiKey: "AIzaSyD4SjU8HuZZZwruDnXQ3Mz1l6mj9xpn8EU",
-  authDomain: "school-diary-8a.firebaseapp.com",
-  databaseURL: "https://school-diary-8a-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "school-diary-8a",
-  storageBucket: "school-diary-8a.firebasestorage.app",
-  messagingSenderId: "252043407645",
-  appId: "1:252043407645:web:ebde5ca5405273a07571f4"
+      apiKey: "AIzaSyD4SjU8HuZZZwruDnXQ3Mz1l6mj9xpn8EU",
+      authDomain: "school-diary-8a.firebaseapp.com",
+      databaseURL: "https://school-diary-8a-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "school-diary-8a",
+      storageBucket: "school-diary-8a.firebasestorage.app",
+      messagingSenderId: "252043407645",
+      appId: "1:252043407645:web:ebde5ca5405273a07571f4"
     };
     // ================================================================
 
@@ -270,6 +380,12 @@
     let currentEditingSubject = null;
     let currentEditingDay = null;
     let uploadedImage = null;
+    let userName = "Гость_" + Math.floor(Math.random() * 1000);
+    let chatRef = null;
+    let onlineUsersRef = null;
+    let userRef = null;
+    let nextDeleteTime = null;
+    let deleteTimerInterval = null;
     
     const lessons = {
       mon: ["Алгебра","РОВ","Химия","География","Английский язык","Физика","Биология"],
@@ -279,6 +395,12 @@
       fri: ["Общество","Технология","Алгебра","Английский язык","Биология","ОБЖ","История"]
     };
 
+    // Список матов для фильтрации
+    const badWords = [
+      'сука', 'бля', 'хуй', 'пизда', 'ебан', 'ебать', 'ебло', 'гондон', 'мудак', 'пидор', 
+      'долбоеб', 'залупа', 'шлюха', 'блядь', 'ахуеть', 'охуеть', 'пиздец', 'ебал', 'выеб'
+    ];
+
     // Звуковые эффекты
     function playSound(soundName) {
       try {
@@ -287,6 +409,108 @@
       } catch (error) {
         console.log('Ошибка воспроизведения звука:', error);
       }
+    }
+
+    // ==================== ФИЛЬТР МАТОВ ====================
+    function filterBadWords(text) {
+      if (!text) return text;
+      
+      let filteredText = text;
+      
+      // Проверяем на обычные маты
+      badWords.forEach(word => {
+        const regex = new RegExp(word, 'gi');
+        filteredText = filteredText.replace(regex, (match) => {
+          if (match.length <= 2) return match;
+          return match[0] + '*'.repeat(match.length - 2) + (match.length > 1 ? match[match.length - 1] : '');
+        });
+      });
+      
+      // Проверяем на обходные варианты (с пробелами, точками и т.д.)
+      const evasionPatterns = [
+        /[сc][\s\.\_\-]*[уy][\s\.\_\-]*[кk][\s\.\_\-]*[аa]/gi,
+        /[бb][\s\.\_\-]*[лl][\s\.\_\-]*[яy][\s\.\_\-]*[дd][ь']?/gi,
+        /[хx][\s\.\_\-]*[уy][\s\.\_\-]*[йй]/gi,
+        /[пp][\s\.\_\-]*[иi][\s\.\_\-]*[з3][\s\.\_\-]*[дd][\s\.\_\-]*[аa]/gi
+      ];
+      
+      evasionPatterns.forEach(pattern => {
+        filteredText = filteredText.replace(pattern, '***');
+      });
+      
+      // Проверяем латинские аналоги
+      const latinPatterns = [
+        /cyka/gi, /suka/gi, /blyat/gi, /bljat/gi, /hui/gi, /xyi/gi, /xyй/gi,
+        /pidor/gi, /pizda/gi, /ebat/gi, /yebat/gi, /gandon/gi
+      ];
+      
+      latinPatterns.forEach(pattern => {
+        filteredText = filteredText.replace(pattern, '***');
+      });
+      
+      return filteredText;
+    }
+
+    // ==================== АВТОУДАЛЕНИЕ ЧАТА ====================
+    function calculateNextDeleteTime() {
+      const now = new Date();
+      const krasnoyarskOffset = 7 * 60 * 60 * 1000; // UTC+7 для Красноярска
+      const localOffset = now.getTimezoneOffset() * 60 * 1000;
+      const krasnoyarskTime = new Date(now.getTime() + localOffset + krasnoyarskOffset);
+      
+      // Время удаления: 6:00, 12:00, 18:00, 24:00 по Красноярску
+      const deleteHours = [6, 12, 18, 24];
+      let nextDeleteHour = null;
+      
+      for (const hour of deleteHours) {
+        if (krasnoyarskTime.getHours() < hour) {
+          nextDeleteHour = hour;
+          break;
+        }
+      }
+      
+      // Если все время прошло, берем первый час следующего дня
+      if (nextDeleteHour === null) {
+        nextDeleteHour = deleteHours[0];
+        krasnoyarskTime.setDate(krasnoyarskTime.getDate() + 1);
+      }
+      
+      krasnoyarskTime.setHours(nextDeleteHour, 0, 0, 0);
+      
+      // Конвертируем обратно в локальное время
+      return new Date(krasnoyarskTime.getTime() - localOffset - krasnoyarskOffset);
+    }
+    
+    function updateDeleteTimer() {
+      if (!nextDeleteTime) {
+        nextDeleteTime = calculateNextDeleteTime();
+      }
+      
+      const now = new Date();
+      const timeLeft = nextDeleteTime - now;
+      
+      if (timeLeft <= 0) {
+        // Удаляем все сообщения
+        if (chatRef) {
+          chatRef.remove();
+          nextDeleteTime = calculateNextDeleteTime();
+        }
+        return;
+      }
+      
+      const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+      const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+      
+      const timerElement = document.getElementById('deleteTimer');
+      if (timerElement) {
+        timerElement.textContent = `автоудаление через: ${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      }
+    }
+    
+    function startDeleteTimer() {
+      updateDeleteTimer();
+      deleteTimerInterval = setInterval(updateDeleteTimer, 1000);
     }
 
     // ==================== УВЕДОМЛЕНИЯ ====================
@@ -448,6 +672,186 @@
         button.textContent = originalText;
         button.disabled = false;
       }, 1000);
+    }
+
+    // ==================== ЧАТ ====================
+    function setupChat() {
+      // Ссылка на сообщения чата
+      chatRef = database.ref('chat/messages');
+      
+      // Ссылка на онлайн-пользователей
+      onlineUsersRef = database.ref('onlineUsers');
+      userRef = onlineUsersRef.push();
+      
+      // Установка имени пользователя
+      const savedName = localStorage.getItem('chatUserName');
+      if (savedName) {
+        userName = savedName;
+      } else {
+        userName = "Гость_" + Math.floor(Math.random() * 1000);
+        localStorage.setItem('chatUserName', userName);
+      }
+      
+      // Обновляем статус пользователя как онлайн
+      userRef.set({
+        name: userName,
+        lastSeen: firebase.database.ServerValue.TIMESTAMP
+      });
+      
+      // Удаляем пользователя при закрытии страницы
+      window.addEventListener('beforeunload', () => {
+        userRef.remove();
+      });
+      
+      // Слушаем изменения в онлайн-пользователях
+      onlineUsersRef.on('value', (snapshot) => {
+        const users = snapshot.val();
+        const count = users ? Object.keys(users).length : 0;
+        document.getElementById('onlineCount').textContent = count;
+      });
+      
+      // Загружаем историю сообщений
+      loadChatMessages();
+      
+      // Запускаем таймер автоудаления
+      startDeleteTimer();
+    }
+    
+    function loadChatMessages() {
+      chatRef.limitToLast(50).on('value', (snapshot) => {
+        const messages = snapshot.val();
+        const messagesContainer = document.getElementById('chatMessages');
+        messagesContainer.innerHTML = '';
+        
+        if (messages) {
+          Object.values(messages).forEach(msg => {
+            if (msg && (msg.text || msg.sticker)) {
+              if (msg.sticker) {
+                addStickerToChat(msg.name, msg.sticker, msg.timestamp, msg.name === userName);
+              } else {
+                addMessageToChat(msg.name, msg.text, msg.timestamp, msg.name === userName);
+              }
+            }
+          });
+          
+          // Прокручиваем вниз
+          setTimeout(() => {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+          }, 100);
+        }
+      });
+    }
+    
+    function addMessageToChat(name, text, timestamp, isOwn = false) {
+      const messagesContainer = document.getElementById('chatMessages');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `chat-message ${isOwn ? 'own' : 'other'}`;
+      
+      const time = new Date(timestamp);
+      const timeStr = time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      
+      messageDiv.innerHTML = `
+        <div class="font-semibold">${isOwn ? 'Вы' : name}</div>
+        <div>${text}</div>
+        <div class="chat-timestamp">${timeStr}</div>
+      `;
+      
+      messagesContainer.appendChild(messageDiv);
+    }
+    
+    function addStickerToChat(name, stickerUrl, timestamp, isOwn = false) {
+      const messagesContainer = document.getElementById('chatMessages');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `chat-message ${isOwn ? 'own' : 'other'}`;
+      messageDiv.style.background = 'none';
+      messageDiv.style.padding = '4px';
+      
+      const time = new Date(timestamp);
+      const timeStr = time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      
+      messageDiv.innerHTML = `
+        <div class="font-semibold" style="font-size: 0.8rem;">${isOwn ? 'Вы' : name}</div>
+        <img src="${stickerUrl}" class="chat-sticker">
+        <div class="chat-timestamp">${timeStr}</div>
+      `;
+      
+      messagesContainer.appendChild(messageDiv);
+    }
+    
+    function sendChatMessage() {
+      const input = document.getElementById('chatInput');
+      let text = input.value.trim();
+      
+      if (text) {
+        // Фильтруем маты
+        text = filterBadWords(text);
+        
+        // Отправляем сообщение в Firebase
+        chatRef.push({
+          name: userName,
+          text: text,
+          timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+        
+        // Очищаем поле ввода
+        input.value = '';
+      }
+    }
+    
+    function sendSticker(stickerUrl) {
+      // Отправляем стикер в Firebase
+      chatRef.push({
+        name: userName,
+        sticker: stickerUrl,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+      });
+      
+      // Закрываем панель стикеров
+      toggleStickerPicker();
+    }
+    
+    function toggleStickerPicker() {
+      const stickerPicker = document.getElementById('stickerPicker');
+      stickerPicker.classList.toggle('hidden');
+    }
+    
+    function handleChatKeyPress(event) {
+      if (event.key === 'Enter') {
+        sendChatMessage();
+      }
+    }
+    
+    function toggleChat() {
+      const chatModal = document.getElementById('chatModal');
+      if (chatModal.classList.contains('hidden')) {
+        openChat();
+      } else {
+        closeChat();
+      }
+    }
+    
+    function openChat() {
+      document.getElementById('chatModal').classList.remove('hidden');
+      setTimeout(() => {
+        document.querySelector('#chatModal .modal').classList.add('show');
+        document.getElementById('chatInput').focus();
+      }, 10);
+      
+      // Обновляем статус пользователя
+      if (userRef) {
+        userRef.update({
+          lastSeen: firebase.database.ServerValue.TIMESTAMP
+        });
+      }
+    }
+    
+    function closeChat() {
+      const modal = document.querySelector('#chatModal .modal');
+      modal.classList.remove('show');
+      setTimeout(() => document.getElementById('chatModal').classList.add('hidden'), 250);
+      
+      // Скрываем панель стикеров при закрытии чата
+      document.getElementById('stickerPicker').classList.add('hidden');
     }
 
     // ==================== РЕНДЕРИНГ ====================
@@ -675,6 +1079,9 @@
       // Настраиваем загрузку изображений
       setupImageUpload();
       
+      // Настраиваем чат
+      setupChat();
+      
       // Слушаем онлайн/оффлайн
       window.addEventListener('online', loadData);
       window.addEventListener('offline', () => {
@@ -685,6 +1092,7 @@
     window.addEventListener('click', (e) => {
       if (e.target.id === 'dzModal') closeModal();
       if (e.target.id === 'editModal') closeEditModal();
+      if (e.target.id === 'chatModal') closeChat();
       if (e.target.id === 'changelogModal') closeChangelog();
     });
   </script>
