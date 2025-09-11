@@ -1506,8 +1506,8 @@
     
     function showRegisterConfirm() {
       const nickname = document.getElementById('regNickname').value.trim();
-      if (nickname.length < 4 || nickname.length > 8) {
-        showNotification('❌ Никнейм должен быть от 4 до 8 символов', 'error');
+      if (nickname.length < 4 || nickname.length > 12) {
+        showNotification('❌ Никнейм должен быть от 4 до 12 символов', 'error');
         return;
       }
       
@@ -1533,8 +1533,8 @@
       const captchaInput = document.getElementById('regCaptchaInput').value;
       const captchaCode = document.getElementById('regCaptchaCode').textContent;
       
-      if (nickname.length < 4 || nickname.length > 8) {
-        showNotification('❌ Никнейм должен быть от 4 до 8 символов', 'error');
+      if (nickname.length < 4 || nickname.length > 12) {
+        showNotification('❌ Никнейм должен быть от 4 до 12 символов', 'error');
         return;
       }
       
