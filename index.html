@@ -1560,11 +1560,11 @@
       }
       
       // Проверяем, есть ли уже аккаунт с этого IP
-      allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => {
-        if (snapshot.exists()) {
-          showNotification('❌ С вашего IP уже зарегистрирован аккаунт', 'error');
-          return;
-        }
+allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => {
+    if (snapshot.exists() && snapshot.numChildren() >= 3) {
+        showNotification('❌ С вашего IP уже зарегистрировано максимальное количество аккаунтов (3)', 'error');
+        return;
+    }
         
         // Проверяем, существует ли уже пользователь с таким никнеймом
         allUsersRef.child(nickname).once('value').then((userSnapshot) => {
