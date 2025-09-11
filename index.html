@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+""<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
@@ -400,23 +400,6 @@
     <div id="syncStatus" class="absolute right-4 top-0 text-sm text-gray-400">
       Загрузка...
     </div>
-  </div>
-
-  <!-- Админ панель -->
-  <div class="absolute top-14 left-4 flex flex-col items-start z-40">
-    <button onclick="toggleAdminLogin()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">Админ</button>
-    <div id="adminLogin" class="mt-2 space-x-2 flex justify-center items-center hidden bg-gray-700 p-3 rounded shadow-lg">
-      <input id="adminPassword" type="password" placeholder="Пароль" class="border p-2 rounded w-32">
-      <button onclick="loginAdmin()" class="px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">Войти</button>
-      <button onclick="deleteAllAccounts()" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors">🗑️ Удалить все аккаунты</button>
-    </div>
-  </div>
-
-  <!-- Кнопка синхронизации (только для админов) -->
-  <div id="syncButtonContainer" class="absolute top-14 left-24 flex flex-col items-start z-40 hidden">
-    <button onclick="forceSync()" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
-      🔄 Синхронизировать
-    </button>
   </div>
 
   <!-- Кнопка аккаунта -->
