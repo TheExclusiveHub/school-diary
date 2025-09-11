@@ -278,7 +278,7 @@
     .profile-avatar:hover .avatar-overlay {
       opacity: 1;
     }
-    .nickname-edit {
+    .nickname-display {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -359,6 +359,34 @@
       text-align: center;
       border: 1px solid #374151;
     }
+    .admin-ip {
+      color: #3b82f6;
+      font-weight: bold;
+    }
+    .user-list-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px;
+      border-bottom: 1px solid #4b5563;
+    }
+    .user-list-item:last-child {
+      border-bottom: none;
+    }
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .delete-user-btn {
+      color: #EF4444;
+      cursor: pointer;
+      padding: 5px;
+    }
+    .delete-user-btn:hover {
+      background-color: rgba(239, 68, 68, 0.1);
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body class="min-h-screen p-6">
@@ -369,10 +397,6 @@
   <!-- Шапка -->
   <div class="flex justify-center items-center mb-4 relative">
     <h1 class="text-2xl font-bold">📚 Дневник 📚</h1>
-    <div id="onlineStatus" class="absolute left-4 top-0 text-sm flex items-center">
-      <span class="online-dot online"></span>
-      <span>онлайн</span>
-    </div>
     <div id="syncStatus" class="absolute right-4 top-0 text-sm text-gray-400">
       Загрузка...
     </div>
@@ -399,13 +423,6 @@
   <div class="fixed bottom-4 left-4">
     <button onclick="openAccountModal()" class="w-14 h-14 bg-gray-600 rounded-full shadow-lg flex items-center justify-center hover:bg-gray-500 transition-colors">
       <img src="account.png" alt="Аккаунт" class="w-8 h-8">
-    </button>
-  </div>
-
-  <!-- Кнопка резервных кодов -->
-  <div class="fixed top-14 right-4">
-    <button onclick="showBackupCodes()" class="w-10 h-10 bg-purple-600 rounded-full shadow-lg flex items-center justify-center hover:bg-purple-500 transition-colors" title="Резервные коды">
-      🔑
     </button>
   </div>
 
@@ -615,20 +632,26 @@
           <div id="profileNickname" class="text-lg font-bold"></div>
         </div>
         
-        <div class="nickname-edit">
+        <div class="nickname-display">
           <span id="profileCurrentNickname" class="text-xl font-bold"></span>
-          <button onclick="editNickname()" class="text-blue-400 hover:text-blue-300">✏️</button>
         </div>
-        
-        <div id="nicknameEdit" class="hidden mt-4">
-          <input type="text" id="newNickname" placeholder="Новый никнейм (4-12 символов)" class="w-full p-3 border rounded mb-3 bg-gray-700 text-white border-gray-600">
-          <button onclick="saveNickname()" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Сохранить</button>
-          <button onclick="cancelEditNickname()" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 ml-2">Отмена</button>
+
+        <div class="mt-4">
+          <button onclick="showBackupCodes()" class="w-full px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 mb-2">
+            🔑 Резервные коды
+          </button>
         </div>
 
         <div class="mt-4">
           <button onclick="showChangePassword()" class="w-full px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 mb-2">
             🔒 Сменить пароль
+          </button>
+        </div>
+
+        <!-- Кнопка для просмотра всех аккаунтов (только для админа) -->
+        <div id="adminAccountsButton" class="mt-4 hidden">
+          <button onclick="showAllAccounts()" class="w-full px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 mb-2">
+            👥 Все аккаунты
           </button>
         </div>
 
@@ -680,10 +703,6 @@
         <div class="backup-code">Загрузка...</div>
         <div class="backup-code">Загрузка...</div>
       </div>
-      
-      <button onclick="generateNewBackupCodes()" class="w-full px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600">
-        🔄 Сгенерировать новые коды
-      </button>
     </div>
   </div>
 
@@ -775,6 +794,28 @@
     </div>
   </div>
 
+  <!-- Модалка всех аккаунтов -->
+  <div id="allAccountsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="modal bg-gray-800 p-6 rounded-2xl shadow-xl w-11/12 max-w-md relative">
+      <button onclick="closeAllAccountsModal()" class="absolute top-2 right-2 text-2xl text-gray-400 hover:text-red-400">✖</button>
+      <h2 class="text-xl font-bold mb-4 text-white">👥 Все аккаунты</h2>
+      <div id="allAccountsList" class="max-h-96 overflow-y-auto"></div>
+    </div>
+  </div>
+
+  <!-- Модалка подтверждения удаления аккаунта -->
+  <div id="confirmDeleteAccountModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="modal confirm-dialog w-11/12 max-w-md relative">
+      <button onclick="closeConfirmDeleteAccount()" class="absolute top-2 right-2 text-2xl text-gray-400 hover:text-red-400">✖</button>
+      <h2 class="text-xl font-bold mb-4 text-white">Подтверждение удаления</h2>
+      <p class="text-gray-300 mb-4">Вы уверены, что хотите удалить аккаунт "<span id="deleteAccountName" class="font-bold text-red-400"></span>"?</p>
+      <div class="flex space-x-2">
+        <button onclick="closeConfirmDeleteAccount()" class="flex-1 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">Отмена</button>
+        <button onclick="deleteAccount()" class="flex-1 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Удалить</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // ==================== КОНФИГУРАЦИЯ FIREBASE ====================
     const firebaseConfig = {
@@ -791,6 +832,9 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
+    // Настройка админского IP
+    const ADMIN_IP = "171.33.254.90";
+    
     let isAdmin = false;
     let homework = {};
     let currentEditingSubject = null;
@@ -811,6 +855,7 @@
     let allUsersRef = null;
     let isChatOpen = false;
     let userIP = null;
+    let accountToDelete = null;
     
     const lessons = {
       mon: ["Алгебра","РОВ","Химия","География","Английский язык","Физика","Биология"],
@@ -849,6 +894,14 @@
         const response = await fetch('https://api.ipify.org?format=json');
         const data = await response.json();
         userIP = data.ip;
+        
+        // Проверяем, является ли пользователь админом
+        if (userIP === ADMIN_IP) {
+          isAdmin = true;
+          document.getElementById('syncButtonContainer').classList.remove('hidden');
+          document.getElementById('adminUsersButton').classList.remove('hidden');
+        }
+        
         return data.ip;
       } catch (error) {
         console.error('Ошибка получения IP:', error);
@@ -1042,7 +1095,7 @@
         if (data) {
           homework = data;
           renderAll();
-          updateSyncStatus('online', `Обновлено: ${new Date().toLocaleTimeString()}`);
+          updateSyncStatus('online', `${new Date().toLocaleTimeString()}`);
           localStorage.setItem('diaryHomework', JSON.stringify(homework));
         } else {
           createInitialData();
@@ -1095,20 +1148,9 @@
     }
 
     function updateSyncStatus(status, message) {
-      const statusElement = document.getElementById('onlineStatus');
       const syncStatus = document.getElementById('syncStatus');
       
       if (syncStatus) syncStatus.textContent = message;
-      
-      if (statusElement) {
-        let html = '';
-        switch(status) {
-          case 'online': html = '<span class="online-dot online"></span><span>онлайн</span>'; break;
-          case 'offline': html = '<span class="online-dot offline"></span><span>оффлайн</span>'; break;
-          case 'syncing': html = '<span class="online-dot syncing"></span><span>синхронизация...</span>'; break;
-        }
-        statusElement.innerHTML = html;
-      }
     }
 
     function forceSync() {
@@ -1140,6 +1182,10 @@
         isLoggedIn = true;
         userName = currentUser.nickname;
         updateChatBlurOverlay();
+      } else {
+        // Если пользователь не авторизован, скрываем чат
+        document.getElementById('chatBlurOverlay').classList.remove('hidden');
+        document.getElementById('chatMessages').innerHTML = '';
       }
       
       userRef = onlineUsersRef.push();
@@ -1165,8 +1211,10 @@
       const blurOverlay = document.getElementById('chatBlurOverlay');
       if (isLoggedIn) {
         blurOverlay.classList.add('hidden');
+        loadChatMessages(); // Загружаем сообщения только для авторизованных
       } else {
         blurOverlay.classList.remove('hidden');
+        document.getElementById('chatMessages').innerHTML = '';
       }
     }
     
@@ -1182,6 +1230,8 @@
     }
     
     function loadChatMessages() {
+      if (!isLoggedIn) return;
+      
       chatRef.limitToLast(50).on('value', (snapshot) => {
         const messages = snapshot.val();
         const messagesContainer = document.getElementById('chatMessages');
@@ -1222,9 +1272,9 @@
       
       messageDiv.innerHTML = `
         <img src="${userAvatar}" class="avatar" alt="${name}">
-        <div class="message-bubble ${isOwn ? 'own' : 'other'}" style="background: none; padding: 0;">
+        <div class="message-bubble ${isOwn ? 'own' : 'other'}">
           <div class="message-sender">${isOwn ? 'Вы' : name}</div>
-          <img src="${stickerUrl}" class="chat-sticker">
+          <div class="message-text">${text}</div>
           <div class="message-time">${timeStr}</div>
         </div>
       `;
@@ -1267,7 +1317,7 @@
       const now = Date.now();
       if (now - lastMessageTime < messageCooldown) {
         const timeLeft = Math.ceil((messageCooldown - (now - lastMessageTime)) / 1000);
-        showNotification(`❌ Подождите ${timeLeft} секунд перед отправкой`, 'error');
+        showNotification(`❌ Подождите ${timeLeft} секунд перед отправкой', 'error`);
         return;
       }
       
@@ -1304,14 +1354,14 @@
       const now = Date.now();
       if (now - lastMessageTime < messageCooldown) {
         const timeLeft = Math.ceil((messageCooldown - (now - lastMessageTime)) / 1000);
-        showNotification(`❌ Подождите ${timeLeft} секунд перед отправкой`, 'error');
+        showNotification(`❌ Подождите ${timeLeft} секунд перед отправкой', 'error`);
         return;
       }
       
       chatRef.push({
-        name: userName,
-        sticker: stickerUrl,
-        timestamp: firebase.database.ServerValue.TIMESTAMP
+          name: userName,
+          sticker: stickerUrl,
+          timestamp: firebase.database.ServerValue.TIMESTAMP
       });
       
       toggleStickerPicker();
@@ -1407,6 +1457,13 @@
         document.getElementById('profileCurrentNickname').textContent = currentUser.nickname;
         if (currentUser.avatar) {
           document.getElementById('profileAvatar').src = currentUser.avatar;
+        }
+        
+        // Показываем кнопку админа если пользователь админ
+        if (isAdmin) {
+          document.getElementById('adminAccountsButton').classList.remove('hidden');
+        } else {
+          document.getElementById('adminAccountsButton').classList.add('hidden');
         }
       } else {
         document.getElementById('authSection').classList.remove('hidden');
@@ -1632,55 +1689,6 @@
       reader.readAsDataURL(file);
     }
     
-    function editNickname() {
-      document.getElementById('nicknameEdit').classList.remove('hidden');
-      document.getElementById('newNickname').value = document.getElementById('profileCurrentNickname').textContent;
-    }
-    
-    function saveNickname() {
-      const newNickname = document.getElementById('newNickname').value.trim();
-      
-      if (newNickname.length < 4 || newNickname.length > 12) {
-        showNotification('❌ Никнейм должен быть от 4 до 12 символов', 'error');
-        return;
-      }
-      
-      // Проверяем, не занят ли новый никнейм
-      allUsersRef.child(newNickname).once('value').then((snapshot) => {
-        if (snapshot.exists() && newNickname !== currentUser.nickname) {
-          showNotification('❌ Этот никнейм уже занят', 'error');
-          return;
-        }
-        
-        // Обновляем данные
-        const oldNickname = currentUser.nickname;
-        
-        // Создаем новую запись и удаляем старую
-        allUsersRef.child(newNickname).set({
-          ...currentUser,
-          nickname: newNickname
-        }).then(() => {
-          // Удаляем старую запись
-          allUsersRef.child(oldNickname).remove();
-          
-          // Обновляем текущего пользователя
-          currentUser.nickname = newNickname;
-          userName = newNickname;
-          localStorage.setItem('currentUser', JSON.stringify(currentUser));
-          
-          document.getElementById('profileCurrentNickname').textContent = newNickname;
-          document.getElementById('profileNickname').textContent = newNickname;
-          document.getElementById('nicknameEdit').classList.add('hidden');
-          
-          showNotification('✅ Никнейм изменён!', 'success');
-        });
-      });
-    }
-    
-    function cancelEditNickname() {
-      document.getElementById('nicknameEdit').classList.add('hidden');
-    }
-    
     function showLogoutConfirm() {
       document.getElementById('confirmLogoutModal').classList.remove('hidden');
       setTimeout(() => {
@@ -1743,30 +1751,6 @@
         codeElement.className = 'backup-code';
         codeElement.textContent = code;
         codesList.appendChild(codeElement);
-      });
-    }
-    
-    function generateNewBackupCodes() {
-      const newCodes = [
-        generateBackupCode(),
-        generateBackupCode(),
-        generateBackupCode()
-      ];
-      
-      // Обновляем в базе данных
-      allUsersRef.child(currentUser.nickname).update({
-        backupCodes: newCodes
-      }).then(() => {
-        // Обновляем локально
-        currentUser.backupCodes = newCodes;
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        
-        // Показываем новые коды
-        displayBackupCodes(newCodes);
-        showNotification('✅ Новые резервные коды сгенерированы', 'success');
-      }).catch(error => {
-        showNotification('❌ Ошибка генерации кодов', 'error');
-        console.error('Ошибка генерации кодов:', error);
       });
     }
 
@@ -1946,6 +1930,80 @@
       const modal = document.querySelector('#usersModal .modal');
       modal.classList.remove('show');
       setTimeout(() => document.getElementById('usersModal').classList.add('hidden'), 250);
+    }
+
+    // ==================== ВСЕ АККАУНТЫ (АДМИН) ====================
+    function showAllAccounts() {
+      if (!isAdmin) return;
+      
+      const accountsList = document.getElementById('allAccountsList');
+      accountsList.innerHTML = '';
+      
+      allUsersRef.once('value').then((snapshot) => {
+        const users = snapshot.val() || {};
+        
+        if (Object.keys(users).length === 0) {
+          accountsList.innerHTML = '<div class="text-center text-gray-400 py-4">Нет зарегистрированных аккаунтов</div>';
+          return;
+        }
+        
+        Object.entries(users).forEach(([nickname, userData]) => {
+          const userElement = document.createElement('div');
+          userElement.className = 'user-list-item';
+          userElement.innerHTML = `
+            <div class="user-info">
+              <img src="${userData.avatar || 'account.png'}" class="w-8 h-8 rounded-full">
+              <span>${nickname}</span>
+            </div>
+            <div class="delete-user-btn" onclick="confirmDeleteAccount('${nickname}')">
+              🗑️
+            </div>
+          `;
+          accountsList.appendChild(userElement);
+        });
+      });
+      
+      document.getElementById('allAccountsModal').classList.remove('hidden');
+      setTimeout(() => {
+        document.querySelector('#allAccountsModal .modal').classList.add('show');
+      }, 10);
+    }
+    
+    function closeAllAccountsModal() {
+      const modal = document.querySelector('#allAccountsModal .modal');
+      modal.classList.remove('show');
+      setTimeout(() => document.getElementById('allAccountsModal').classList.add('hidden'), 250);
+    }
+    
+    function confirmDeleteAccount(nickname) {
+      accountToDelete = nickname;
+      document.getElementById('deleteAccountName').textContent = nickname;
+      document.getElementById('confirmDeleteAccountModal').classList.remove('hidden');
+      setTimeout(() => {
+        document.querySelector('#confirmDeleteAccountModal .modal').classList.add('show');
+      }, 10);
+    }
+    
+    function closeConfirmDeleteAccount() {
+      const modal = document.querySelector('#confirmDeleteAccountModal .modal');
+      modal.classList.remove('show');
+      setTimeout(() => document.getElementById('confirmDeleteAccountModal').classList.add('hidden'), 250);
+      accountToDelete = null;
+    }
+    
+    function deleteAccount() {
+      if (!accountToDelete || !isAdmin) return;
+      
+      allUsersRef.child(accountToDelete).remove()
+        .then(() => {
+          showNotification('✅ Аккаунт удалён', 'success');
+          closeConfirmDeleteAccount();
+          showAllAccounts(); // Обновляем список
+        })
+        .catch(error => {
+          showNotification('❌ Ошибка удаления аккаунта', 'error');
+          console.error('Ошибка удаления аккаунта:', error);
+        });
     }
 
     // ==================== РЕНДЕРИНГ ====================
@@ -2181,6 +2239,8 @@
       if (e.target.id === 'backupCodesModal') closeBackupCodes();
       if (e.target.id === 'changePasswordModal') closeChangePassword();
       if (e.target.id === 'forgotPasswordModal') closeForgotPassword();
+      if (e.target.id === 'allAccountsModal') closeAllAccountsModal();
+      if (e.target.id === 'confirmDeleteAccountModal') closeConfirmDeleteAccount();
     });
   </script>
 </body>
