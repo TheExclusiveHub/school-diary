@@ -136,6 +136,7 @@
       border-radius: 50%;
       flex-shrink: 0;
       object-fit: cover;
+      cursor: pointer;
     }
     .message-bubble {
       max-width: 70%;
@@ -156,6 +157,8 @@
       font-size: 12px;
       margin-bottom: 2px;
       color: #9ca3af;
+      cursor: pointer;
+      position: relative;
     }
     .message-time {
       font-size: 11px;
@@ -387,6 +390,51 @@
       background-color: rgba(239, 68, 68, 0.1);
       border-radius: 4px;
     }
+    
+    /* UUID Tooltip */
+    .uuid-tooltip {
+      position: absolute;
+      background-color: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      z-index: 1000;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-bottom: 5px;
+    }
+    .uuid-tooltip.show {
+      opacity: 1;
+    }
+    
+    /* Analytics Button */
+    .analytics-button {
+      position: fixed;
+      bottom: 4rem;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 3rem;
+      height: 3rem;
+      background-color: #3b82f6;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      z-index: 30;
+      transition: background-color 0.2s;
+    }
+    .analytics-button:hover {
+      background-color: #2563eb;
+    }
   </style>
 </head>
 <body class="min-h-screen p-6">
@@ -424,6 +472,11 @@
     <button onclick="openAccountModal()" class="w-14 h-14 bg-gray-600 rounded-full shadow-lg flex items-center justify-center hover:bg-gray-500 transition-colors">
       <img src="account.png" alt="Аккаунт" class="w-8 h-8">
     </button>
+  </div>
+
+  <!-- Кнопка аналитики -->
+  <div class="analytics-button" onclick="showAnalytics()">
+    ℹ️
   </div>
 
   <!-- Кнопка чата -->
@@ -547,6 +600,9 @@
           class="flex-1 p-2 border rounded bg-gray-700 text-white border-gray-600"
           onkeypress="handleChatKeyPress(event)">
         <button id="sendButton" onclick="sendChatMessage()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">➤</button>
+        <button id="clearChatButton" onclick="showClearChatConfirm()" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600" title="Очистить чат">
+          🗑️
+        </button>
       </div>
       
       <div class="mt-2 text-sm text-gray-400 flex items-center justify-between">
@@ -630,29 +686,32 @@
         <div class="text-center mb-4">
           <div class="text-sm text-gray-400">Никнейм:</div>
           <div id="profileNickname" class="text-lg font-bold"></div>
+          <div class="text-xs text-gray-500 mt-1" id="profileUuid" onclick="copyUuidToClipboard()" style="cursor: pointer; user-select: none;"></div>
         </div>
         
         <div class="nickname-display">
           <span id="profileCurrentNickname" class="text-xl font-bold"></span>
         </div>
 
-        <div class="mt-4">
-          <button onclick="showBackupCodes()" class="w-full px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 mb-2">
-            🔑 Резервные коды
-          </button>
-        </div>
+        <div id="profileAdminSection" class="hidden">
+          <div class="mt-4">
+            <button onclick="showBackupCodes()" class="w-full px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 mb-2">
+              🔑 Резервные коды
+            </button>
+          </div>
 
-        <div class="mt-4">
-          <button onclick="showChangePassword()" class="w-full px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 mb-2">
-            🔒 Сменить пароль
-          </button>
-        </div>
+          <div class="mt-4">
+            <button onclick="showChangePassword()" class="w-full px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 mb-2">
+              🔒 Сменить пароль
+            </button>
+          </div>
 
-        <!-- Кнопка для просмотра всех аккаунтов (только для админа) -->
-        <div id="adminAccountsButton" class="mt-4 hidden">
-          <button onclick="showAllAccounts()" class="w-full px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 mb-2">
-            👥 Все аккаунты
-          </button>
+          <!-- Кнопка для просмотра всех аккаунтов (только для админа) -->
+          <div id="adminAccountsButton" class="mt-4 hidden">
+            <button onclick="showAllAccounts()" class="w-full px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 mb-2">
+              👥 Все аккаунты
+            </button>
+          </div>
         </div>
 
         <div class="mt-4 pt-4 border-t border-gray-600">
@@ -771,21 +830,18 @@
   <div id="changelogModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="modal bg-gray-800 p-6 rounded-2xl shadow-xl w-11/12 max-w-3xl relative">
       <button onclick="closeChangelog()" class="absolute top-2 right-2 text-2xl text-gray-400 hover:text-red-400">✖</button>
-      <h2 class="text-xl font-bold mb-4 text-white">Changelog    ver. 1.4.0</h2>
-      <pre class="whitespace-pre-wrap text-sm text-white">[+] Добавили онлайн чат
-[+] Добавили стикеры
-[+] Добавили систему аккаунтов
-[+] Добавили резервные коды
-[/] Улучшили дизайн чата
-[/] Улучшили фильтрацию матов
-[/] Улучшили логику регистрации
-[/] Улучшили защиту аккаунтов
-[/] Улучшили интерфейс
-[/] Улучшили отображение ДЗ
-[/] Улучшили защиту аккаунта
-[-] Убрали премиум подписку
-[-] Убрали изменение темы
-[-] Убрали Админ Панель</pre>
+      <h2 class="text-xl font-bold mb-4 text-white">Changelog    ver. 1.5.0</h2>
+      <pre class="whitespace-pre-wrap text-sm text-white">[+] Добавили UUID для пользователей
+[+] Добавили удаление пользователей из чата
+[+] Добавили просмотр профилей из чата
+[+] Добавили принудительную очистку чата
+[+] Добавили аналитику посещений
+[+] Добавили систему мута за нарушения
+[+] Добавили запрет ссылок и английских букв в чате
+[/] Исправили отображение аватарок в чате
+[/] Исправили дублирование пользователей в онлайн
+[/] Улучшили безопасность и приватность
+[-] Убрали видимость резервных кодов для других</pre>
     </div>
   </div>
 
@@ -819,6 +875,64 @@
       <div class="flex space-x-2">
         <button onclick="closeConfirmDeleteAccount()" class="flex-1 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">Отмена</button>
         <button onclick="deleteAccount()" class="flex-1 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модалка подтверждения очистки чата -->
+  <div id="confirmClearChatModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="modal confirm-dialog w-11/12 max-w-md relative">
+      <button onclick="closeConfirmClearChat()" class="absolute top-2 right-2 text-2xl text-gray-400 hover:text-red-400">✖</button>
+      <h2 class="text-xl font-bold mb-4 text-white">Подтверждение очистки</h2>
+      <p class="text-gray-300 mb-4">Вы уверены, что хотите полностью очистить чат? Это действие нельзя отменить.</p>
+      <div class="flex space-x-2">
+        <button onclick="closeConfirmClearChat()" class="flex-1 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">Отмена</button>
+        <button onclick="clearChat()" class="flex-1 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Очистить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модалка профиля пользователя -->
+  <div id="userProfileModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="modal bg-gray-800 p-6 rounded-2xl shadow-xl w-11/12 max-w-md relative">
+      <button onclick="closeUserProfile()" class="absolute top-2 right-2 text-2xl text-gray-400 hover:text-red-400">✖</button>
+      <h2 class="text-xl font-bold mb-4 text-white">👤 Профиль пользователя</h2>
+      
+      <div class="text-center mb-4">
+        <img id="profileViewAvatar" src="account.png" alt="Аватар" class="w-24 h-24 rounded-full mx-auto mb-4">
+        <div id="profileViewNickname" class="text-xl font-bold"></div>
+        <div id="profileViewUuid" class="text-sm text-gray-400 mt-2"></div>
+        <div id="profileViewStatus" class="text-sm mt-2">
+          <span class="online-dot online"></span> <span>В сети</span>
+        </div>
+      </div>
+      
+      <div class="mt-4 text-center" id="profileViewAdminActions">
+        <button onclick="deleteUserFromChat()" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">
+          🗑️ Удалить из чата
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модалка аналитики -->
+  <div id="analyticsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="modal bg-gray-800 p-6 rounded-2xl shadow-xl w-11/12 max-w-md relative">
+      <button onclick="closeAnalytics()" class="absolute top-2 right-2 text-2xl text-gray-400 hover:text-red-400">✖</button>
+      <h2 class="text-xl font-bold mb-4 text-white">📊 Аналитика посещений</h2>
+      
+      <div class="mb-4">
+        <h3 class="text-lg font-semibold mb-2">Посещения за сегодня</h3>
+        <div id="todayVisits" class="bg-gray-700 p-4 rounded-lg">
+          <div class="text-center text-gray-400">Загрузка данных...</div>
+        </div>
+      </div>
+      
+      <div>
+        <h3 class="text-lg font-semibold mb-2">Статистика за неделю</h3>
+        <div id="weeklyStats" class="bg-gray-700 p-4 rounded-lg">
+          <div class="text-center text-gray-400">Загрузка данных...</div>
+        </div>
       </div>
     </div>
   </div>
@@ -863,6 +977,9 @@
     let isChatOpen = false;
     let userIP = null;
     let accountToDelete = null;
+    let userMutedUntil = 0;
+    let viewedUserProfile = null;
+    let userVisitsRef = null;
     
     const lessons = {
       mon: ["Алгебра","РОВ","Химия","География","Английский язык","Физика","Биология"],
@@ -883,6 +1000,15 @@
       'разъеб', 'съеб', 'уеб', 'fuck', 'shit', 'bitch', 'asshole', 'dick', 'pussy', 'cunt',
       'ass', 'cock', 'whore', 'slut', 'nigger', 'nigga', 'faggot', 'retard', 'motherfucker'
     ];
+
+    // Генерация UUID
+    function generateUUID() {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
 
     // Генерация резервного кода
     function generateBackupCode() {
@@ -907,6 +1033,7 @@
           isAdmin = true;
           document.getElementById('syncButtonContainer').classList.remove('hidden');
           document.getElementById('adminUsersButton').classList.remove('hidden');
+          document.getElementById('clearChatButton').classList.remove('hidden');
         }
         
         return data.ip;
@@ -999,6 +1126,54 @@
       return filteredText;
     }
 
+    // Проверка на наличие ссылок
+    function containsLinks(text) {
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      return urlRegex.test(text);
+    }
+
+    // Проверка на английские буквы
+    function containsEnglish(text) {
+      const englishRegex = /[a-zA-Z]/;
+      return englishRegex.test(text);
+    }
+
+    // ==================== СИСТЕМА МУТА ====================
+    function checkIfMuted() {
+      return userMutedUntil > Date.now();
+    }
+
+    function updateMuteStatus() {
+      const chatInput = document.getElementById('chatInput');
+      const sendButton = document.getElementById('sendButton');
+      const stickerToggle = document.getElementById('stickerToggle');
+      
+      if (checkIfMuted()) {
+        const timeLeft = Math.ceil((userMutedUntil - Date.now()) / 60000);
+        chatInput.disabled = true;
+        chatInput.placeholder = `До окончания мута: ${timeLeft} минут`;
+        sendButton.disabled = true;
+        stickerToggle.disabled = true;
+      } else {
+        chatInput.disabled = false;
+        chatInput.placeholder = "Введите сообщение...";
+        sendButton.disabled = false;
+        stickerToggle.disabled = false;
+      }
+    }
+
+    function muteUser(durationMinutes, reason = "нарушение правил") {
+      userMutedUntil = Date.now() + (durationMinutes * 60000);
+      localStorage.setItem('userMutedUntil', userMutedUntil);
+      updateMuteStatus();
+      
+      // Показываем уведомление
+      showNotification(`Вы получили мут на ${durationMinutes} минут за ${reason}`, 'error');
+      
+      // Запускаем таймер для обновления статуса
+      setInterval(updateMuteStatus, 60000);
+    }
+
     // ==================== АВТОУДАЛЕНИЕ ЧАТА ====================
     function calculateNextDeleteTime() {
       const now = new Date();
@@ -1068,6 +1243,47 @@
       }, 3000);
     }
 
+    // ==================== UUID TOOLTIP ====================
+    function showUuidTooltip(element, uuid, isClick = false) {
+      // Создаем tooltip если его нет
+      let tooltip = element.querySelector('.uuid-tooltip');
+      if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.className = 'uuid-tooltip';
+        tooltip.textContent = `UUID: ${uuid}`;
+        element.appendChild(tooltip);
+      }
+      
+      // Показываем tooltip
+      tooltip.classList.add('show');
+      
+      // Если это клик, скрываем через 5 секунд
+      if (isClick) {
+        setTimeout(() => {
+          tooltip.classList.remove('show');
+        }, 5000);
+      }
+    }
+
+    function hideUuidTooltip(element) {
+      const tooltip = element.querySelector('.uuid-tooltip');
+      if (tooltip) {
+        tooltip.classList.remove('show');
+      }
+    }
+
+    function copyUuidToClipboard() {
+      if (currentUser && currentUser.uuid) {
+        navigator.clipboard.writeText(currentUser.uuid)
+          .then(() => {
+            showNotification('UUID скопирован в буфер обмена', 'success');
+          })
+          .catch(err => {
+            showNotification('Не удалось скопировать UUID', 'error');
+          });
+      }
+    }
+
     // ==================== АДМИН ПАНЕЛЬ ====================
     function toggleAdminLogin() {
       const adminLogin = document.getElementById('adminLogin');
@@ -1082,6 +1298,7 @@
         document.getElementById('syncButtonContainer').classList.remove('hidden');
         document.getElementById('adminLogin').classList.add('hidden');
         document.getElementById('adminUsersButton').classList.remove('hidden');
+        document.getElementById('clearChatButton').classList.remove('hidden');
         showNotification('✅ Вы вошли как администратор', 'success');
         renderAll();
       } else {
@@ -1181,9 +1398,12 @@
       onlineUsersRef = database.ref('chatOnlineUsers');
       allUsersRef = database.ref('users');
       chatUsersRef = database.ref('chatUsers');
+      userVisitsRef = database.ref('userVisits');
       
       // Загружаем сохраненного пользователя
       const savedUser = localStorage.getItem('currentUser');
+      const savedMute = localStorage.getItem('userMutedUntil');
+      
       if (savedUser) {
         currentUser = JSON.parse(savedUser);
         isLoggedIn = true;
@@ -1193,6 +1413,11 @@
         // Если пользователь не авторизован, скрываем чат
         document.getElementById('chatBlurOverlay').classList.remove('hidden');
         document.getElementById('chatMessages').innerHTML = '';
+      }
+      
+      if (savedMute) {
+        userMutedUntil = parseInt(savedMute);
+        updateMuteStatus();
       }
       
       userRef = onlineUsersRef.push();
@@ -1206,12 +1431,26 @@
       // Слушаем онлайн пользователей в чате
       onlineUsersRef.on('value', (snapshot) => {
         onlineUsers = snapshot.val() || {};
-        const onlineCount = Object.values(onlineUsers).filter(user => user.status === 'online').length;
+        const onlineCount = Object.values(onlineUsers).filter(user => user && user.status === 'online').length;
         document.getElementById('onlineCount').textContent = onlineCount;
       });
       
       loadChatMessages();
       startDeleteTimer();
+      
+      // Записываем посещение
+      if (isLoggedIn && currentUser) {
+        recordUserVisit();
+      }
+    }
+    
+    function recordUserVisit() {
+      const today = new Date().toLocaleDateString('ru-RU');
+      userVisitsRef.child(today).child(currentUser.uuid).set({
+        nickname: currentUser.nickname,
+        timestamp: firebase.database.ServerValue.TIMESTAMP,
+        ip: userIP
+      });
     }
     
     function updateChatBlurOverlay() {
@@ -1230,6 +1469,7 @@
         userRef.set({
           nickname: currentUser.nickname,
           avatar: currentUser.avatar,
+          uuid: currentUser.uuid,
           status: status,
           lastSeen: firebase.database.ServerValue.TIMESTAMP
         });
@@ -1248,9 +1488,9 @@
           Object.values(messages).forEach(msg => {
             if (msg && (msg.text || msg.sticker)) {
               if (msg.sticker) {
-                addStickerToChat(msg.name, msg.sticker, msg.timestamp, msg.name === userName);
+                addStickerToChat(msg.name, msg.sticker, msg.timestamp, msg.uuid, msg.name === userName);
               } else {
-                addMessageToChat(msg.name, msg.text, msg.timestamp, msg.name === userName);
+                addMessageToChat(msg.name, msg.text, msg.timestamp, msg.uuid, msg.name === userName);
               }
             }
           });
@@ -1263,7 +1503,7 @@
       });
     }
     
-    function addMessageToChat(name, text, timestamp, isOwn = false) {
+    function addMessageToChat(name, text, timestamp, uuid, isOwn = false) {
       const messagesContainer = document.getElementById('chatMessages');
       const messageDiv = document.createElement('div');
       messageDiv.className = `message-container ${isOwn ? 'own' : ''}`;
@@ -1275,12 +1515,20 @@
       let userAvatar = 'account.png';
       if (currentUser && name === currentUser.nickname) {
         userAvatar = currentUser.avatar || 'account.png';
+      } else {
+        // Ищем аватар в онлайн пользователях
+        const onlineUser = Object.values(onlineUsers).find(user => user && user.nickname === name);
+        if (onlineUser && onlineUser.avatar) {
+          userAvatar = onlineUser.avatar;
+        }
       }
       
       messageDiv.innerHTML = `
-        <img src="${userAvatar}" class="avatar" alt="${name}">
+        <img src="${userAvatar}" class="avatar" alt="${name}" onclick="viewUserProfile('${uuid || ''}', '${name}')">
         <div class="message-bubble ${isOwn ? 'own' : 'other'}">
-          <div class="message-sender">${isOwn ? 'Вы' : name}</div>
+          <div class="message-sender" onmouseover="if('${uuid}') showUuidTooltip(this, '${uuid}')" onmouseout="hideUuidTooltip(this)" onclick="if('${uuid}') showUuidTooltip(this, '${uuid}', true)">
+            ${isOwn ? 'Вы' : name}
+          </div>
           <div class="message-text">${text}</div>
           <div class="message-time">${timeStr}</div>
         </div>
@@ -1289,7 +1537,7 @@
       messagesContainer.appendChild(messageDiv);
     }
     
-    function addStickerToChat(name, stickerUrl, timestamp, isOwn = false) {
+    function addStickerToChat(name, stickerUrl, timestamp, uuid, isOwn = false) {
       const messagesContainer = document.getElementById('chatMessages');
       const messageDiv = document.createElement('div');
       messageDiv.className = `message-container ${isOwn ? 'own' : ''}`;
@@ -1301,12 +1549,20 @@
       let userAvatar = 'account.png';
       if (currentUser && name === currentUser.nickname) {
         userAvatar = currentUser.avatar || 'account.png';
+      } else {
+        // Ищем аватар в онлайн пользователях
+        const onlineUser = Object.values(onlineUsers).find(user => user && user.nickname === name);
+        if (onlineUser && onlineUser.avatar) {
+          userAvatar = onlineUser.avatar;
+        }
       }
       
       messageDiv.innerHTML = `
-        <img src="${userAvatar}" class="avatar" alt="${name}">
+        <img src="${userAvatar}" class="avatar" alt="${name}" onclick="viewUserProfile('${uuid || ''}', '${name}')">
         <div class="message-bubble ${isOwn ? 'own' : 'other'}" style="background: none; padding: 0;">
-          <div class="message-sender">${isOwn ? 'Вы' : name}</div>
+          <div class="message-sender" onmouseover="if('${uuid}') showUuidTooltip(this, '${uuid}')" onmouseout="hideUuidTooltip(this)" onclick="if('${uuid}') showUuidTooltip(this, '${uuid}', true)">
+            ${isOwn ? 'Вы' : name}
+          </div>
           <img src="${stickerUrl}" class="chat-sticker">
           <div class="message-time">${timeStr}</div>
         </div>
@@ -1321,6 +1577,13 @@
         return;
       }
       
+      // Проверяем мут
+      if (checkIfMuted()) {
+        const timeLeft = Math.ceil((userMutedUntil - Date.now()) / 60000);
+        showNotification(`❌ Вы в муте еще ${timeLeft} минут`, 'error');
+        return;
+      }
+      
       const now = Date.now();
       if (now - lastMessageTime < messageCooldown) {
         const timeLeft = Math.ceil((messageCooldown - (now - lastMessageTime)) / 1000);
@@ -1332,17 +1595,29 @@
       let text = input.value.trim();
       
       if (text) {
+        // Проверяем на ссылки
+        if (containsLinks(text)) {
+          muteUser(1440, "отправку ссылок"); // Мут на 1 день (1440 минут)
+          return;
+        }
+        
+        // Проверяем на английские буквы
+        if (containsEnglish(text)) {
+          showNotification('❌ Запрещено использовать английские буквы в чате', 'error');
+          return;
+        }
+        
         // Фильтруем маты
         const filteredText = filterBadWords(text);
         if (filteredText === '') {
-          showNotification('❌ Сообщение содержит запрещённые слова', 'error');
-          input.value = '';
+          muteUser(10, "использование мата"); // Мут на 10 минут
           return;
         }
         
         chatRef.push({
           name: userName,
           text: filteredText,
+          uuid: currentUser.uuid,
           timestamp: firebase.database.ServerValue.TIMESTAMP
         });
         
@@ -1358,6 +1633,13 @@
         return;
       }
       
+      // Проверяем мут
+      if (checkIfMuted()) {
+        const timeLeft = Math.ceil((userMutedUntil - Date.now()) / 60000);
+        showNotification(`❌ Вы в муте еще ${timeLeft} минут`, 'error');
+        return;
+      }
+      
       const now = Date.now();
       if (now - lastMessageTime < messageCooldown) {
         const timeLeft = Math.ceil((messageCooldown - (now - lastMessageTime)) / 1000);
@@ -1368,6 +1650,7 @@
       chatRef.push({
           name: userName,
           sticker: stickerUrl,
+          uuid: currentUser.uuid,
           timestamp: firebase.database.ServerValue.TIMESTAMP
       });
       
@@ -1444,6 +1727,176 @@
         updateUserStatus('away');
       }
     }
+    
+    // ==================== ОЧИСТКА ЧАТА ====================
+    function showClearChatConfirm() {
+      if (!isAdmin) return;
+      
+      document.getElementById('confirmClearChatModal').classList.remove('hidden');
+      setTimeout(() => {
+        document.querySelector('#confirmClearChatModal .modal').classList.add('show');
+      }, 10);
+    }
+    
+    function closeConfirmClearChat() {
+      const modal = document.querySelector('#confirmClearChatModal .modal');
+      modal.classList.remove('show');
+      setTimeout(() => document.getElementById('confirmClearChatModal').classList.add('hidden'), 250);
+    }
+    
+    function clearChat() {
+      closeConfirmClearChat();
+      
+      if (chatRef) {
+        chatRef.remove()
+          .then(() => {
+            showNotification('✅ Чат очищен', 'success');
+          })
+          .catch(error => {
+            showNotification('❌ Ошибка очистки чата', 'error');
+            console.error('Ошибка очистки чата:', error);
+          });
+      }
+    }
+
+    // ==================== ПРОСМОТР ПРОФИЛЯ ПОЛЬЗОВАТЕЛЯ ====================
+    function viewUserProfile(uuid, nickname) {
+      if (!uuid) return;
+      
+      viewedUserProfile = { uuid, nickname };
+      
+      // Загружаем данные пользователя
+      allUsersRef.orderByChild('uuid').equalTo(uuid).once('value').then(snapshot => {
+        if (snapshot.exists()) {
+          const userData = Object.values(snapshot.val())[0];
+          
+          document.getElementById('profileViewAvatar').src = userData.avatar || 'account.png';
+          document.getElementById('profileViewNickname').textContent = userData.nickname;
+          document.getElementById('profileViewUuid').textContent = `UUID: ${userData.uuid}`;
+          
+          // Проверяем статус пользователя
+          const isOnline = Object.values(onlineUsers).some(user => user && user.uuid === uuid && user.status === 'online');
+          document.getElementById('profileViewStatus').innerHTML = `
+            <span class="online-dot ${isOnline ? 'online' : 'offline'}"></span>
+            <span>${isOnline ? 'В сети' : 'Не в сети'}</span>
+          `;
+          
+          // Показываем кнопку удаления только для админа
+          if (isAdmin) {
+            document.getElementById('profileViewAdminActions').classList.remove('hidden');
+          } else {
+            document.getElementById('profileViewAdminActions').classList.add('hidden');
+          }
+        } else {
+          // Если пользователь не найден в базе, показываем только основную информацию
+          document.getElementById('profileViewAvatar').src = 'account.png';
+          document.getElementById('profileViewNickname').textContent = nickname;
+          document.getElementById('profileViewUuid').textContent = `UUID: ${uuid}`;
+          document.getElementById('profileViewStatus').innerHTML = `
+            <span class="online-dot offline"></span>
+            <span>Не в сети</span>
+          `;
+          document.getElementById('profileViewAdminActions').classList.add('hidden');
+        }
+        
+        // Показываем модалку
+        document.getElementById('userProfileModal').classList.remove('hidden');
+        setTimeout(() => {
+          document.querySelector('#userProfileModal .modal').classList.add('show');
+        }, 10);
+      });
+    }
+    
+    function closeUserProfile() {
+      const modal = document.querySelector('#userProfileModal .modal');
+      modal.classList.remove('show');
+      setTimeout(() => document.getElementById('userProfileModal').classList.add('hidden'), 250);
+      viewedUserProfile = null;
+    }
+    
+    function deleteUserFromChat() {
+      if (!isAdmin || !viewedUserProfile) return;
+      
+      // Удаляем все сообщения пользователя
+      chatRef.once('value').then(snapshot => {
+        const messages = snapshot.val();
+        if (messages) {
+          Object.entries(messages).forEach(([key, message]) => {
+            if (message && message.uuid === viewedUserProfile.uuid) {
+              chatRef.child(key).remove();
+            }
+          });
+        }
+        
+        showNotification(`✅ Сообщения пользователя ${viewedUserProfile.nickname} удалены`, 'success');
+        closeUserProfile();
+      });
+    }
+
+    // ==================== АНАЛИТИКА ПОСЕЩЕНИЙ ====================
+    function showAnalytics() {
+      if (!isAdmin) return;
+      
+      document.getElementById('analyticsModal').classList.remove('hidden');
+      setTimeout(() => {
+        document.querySelector('#analyticsModal .modal').classList.add('show');
+      }, 10);
+      
+      loadAnalyticsData();
+    }
+    
+    function closeAnalytics() {
+      const modal = document.querySelector('#analyticsModal .modal');
+      modal.classList.remove('show');
+      setTimeout(() => document.getElementById('analyticsModal').classList.add('hidden'), 250);
+    }
+    
+    function loadAnalyticsData() {
+      const today = new Date().toLocaleDateString('ru-RU');
+      const todayVisitsElement = document.getElementById('todayVisits');
+      const weeklyStatsElement = document.getElementById('weeklyStats');
+      
+      // Загрузка данных за сегодня
+      userVisitsRef.child(today).once('value').then(snapshot => {
+        const visits = snapshot.val() || {};
+        const uniqueVisitors = Object.keys(visits).length;
+        
+        todayVisitsElement.innerHTML = `
+          <div class="text-center">
+            <div class="text-2xl font-bold">${uniqueVisitors}</div>
+            <div class="text-gray-400">уникальных посетителей сегодня</div>
+          </div>
+        `;
+      });
+      
+      // Загрузка данных за неделю
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      
+      userVisitsRef.orderByKey().startAt(weekAgo.toLocaleDateString('ru-RU')).once('value').then(snapshot => {
+        const visits = snapshot.val() || {};
+        let totalVisits = 0;
+        let uniqueVisitors = new Set();
+        
+        Object.values(visits).forEach(dayVisits => {
+          totalVisits += Object.keys(dayVisits).length;
+          Object.keys(dayVisits).forEach(uuid => uniqueVisitors.add(uuid));
+        });
+        
+        weeklyStatsElement.innerHTML = `
+          <div class="grid grid-cols-2 gap-4 text-center">
+            <div>
+              <div class="text-xl font-bold">${totalVisits}</div>
+              <div class="text-gray-400">всего посещений</div>
+            </div>
+            <div>
+              <div class="text-xl font-bold">${uniqueVisitors.size}</div>
+              <div class="text-gray-400">уникальных пользователей</div>
+            </div>
+          </div>
+        `;
+      });
+    }
 
     // ==================== СИСТЕМА АККАУНТОВ ====================
     function openAccountModal() {
@@ -1462,14 +1915,17 @@
         document.getElementById('profileSection').classList.remove('hidden');
         document.getElementById('profileNickname').textContent = currentUser.nickname;
         document.getElementById('profileCurrentNickname').textContent = currentUser.nickname;
+        document.getElementById('profileUuid').textContent = `UUID: ${currentUser.uuid}`;
         if (currentUser.avatar) {
           document.getElementById('profileAvatar').src = currentUser.avatar;
         }
         
-        // Показываем кнопку админа если пользователь админ
+        // Показываем админские функции только владельцу аккаунта
         if (isAdmin) {
+          document.getElementById('profileAdminSection').classList.remove('hidden');
           document.getElementById('adminAccountsButton').classList.remove('hidden');
         } else {
+          document.getElementById('profileAdminSection').classList.add('hidden');
           document.getElementById('adminAccountsButton').classList.add('hidden');
         }
       } else {
@@ -1559,19 +2015,22 @@
         return;
       }
       
-// Новая проверка (разрешено до 3 аккаунтов с IP)
-allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => {
-    if (snapshot.exists() && snapshot.numChildren() >= 3) {
-        showNotification('❌ С вашего IP уже зарегистрировано максимальное количество аккаунтов (3)', 'error');
-        return;
-    }
-        
+      // Новая проверка (разрешено до 3 аккаунтов с IP)
+      allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => {
+        if (snapshot.exists() && snapshot.numChildren() >= 3) {
+            showNotification('❌ С вашего IP уже зарегистрировано максимальное количество аккаунтов (3)', 'error');
+            return;
+        }
+            
         // Проверяем, существует ли уже пользователь с таким никнеймом
         allUsersRef.child(nickname).once('value').then((userSnapshot) => {
           if (userSnapshot.exists()) {
             showNotification('❌ Пользователь с таким никнеймом уже существует', 'error');
             return;
           }
+          
+          // Генерируем UUID
+          const uuid = generateUUID();
           
           // Генерируем резервные коды
           const backupCodes = [
@@ -1585,6 +2044,7 @@ allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => 
             nickname: nickname,
             password: password,
             avatar: 'account.png',
+            uuid: uuid,
             ip: userIP,
             backupCodes: backupCodes,
             registeredAt: firebase.database.ServerValue.TIMESTAMP,
@@ -1595,6 +2055,7 @@ allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => 
             currentUser = { 
               nickname, 
               avatar: 'account.png',
+              uuid: uuid,
               backupCodes: backupCodes 
             };
             userName = nickname;
@@ -1608,6 +2069,7 @@ allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => 
             document.getElementById('profileSection').classList.remove('hidden');
             document.getElementById('profileNickname').textContent = nickname;
             document.getElementById('profileCurrentNickname').textContent = nickname;
+            document.getElementById('profileUuid').textContent = `UUID: ${uuid}`;
             
             // Показываем резервные коды
             showBackupCodes();
@@ -1648,6 +2110,7 @@ allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => 
         currentUser = {
           nickname: userData.nickname,
           avatar: userData.avatar || 'account.png',
+          uuid: userData.uuid,
           backupCodes: userData.backupCodes || []
         };
         userName = currentUser.nickname;
@@ -1666,7 +2129,11 @@ allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => 
         document.getElementById('profileSection').classList.remove('hidden');
         document.getElementById('profileNickname').textContent = currentUser.nickname;
         document.getElementById('profileCurrentNickname').textContent = currentUser.nickname;
+        document.getElementById('profileUuid').textContent = `UUID: ${currentUser.uuid}`;
         document.getElementById('profileAvatar').src = currentUser.avatar;
+        
+        // Записываем посещение
+        recordUserVisit();
       }).catch((error) => {
         showNotification('❌ Ошибка при входе', 'error');
         console.error('Ошибка входа:', error);
@@ -1890,18 +2357,27 @@ allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => 
         // Получаем онлайн пользователей из чата
         onlineUsersRef.once('value').then((onlineSnapshot) => {
           const chatOnlineUsers = onlineSnapshot.val() || {};
-          const onlineCount = Object.values(chatOnlineUsers).filter(user => user.status === 'online').length;
+          const onlineCount = Object.values(chatOnlineUsers).filter(user => user && user.status === 'online').length;
           document.getElementById('onlineUsersCount').textContent = onlineCount;
+          
+          // Собираем уникальных пользователей по UUID
+          const uniqueUsers = {};
           
           // Отображаем онлайн пользователей
           Object.entries(chatOnlineUsers).forEach(([key, user]) => {
-            if (user.status === 'online') {
+            if (user && user.status === 'online' && user.uuid && !uniqueUsers[user.uuid]) {
+              uniqueUsers[user.uuid] = true;
+              
               const userElement = document.createElement('div');
               userElement.className = 'user-status';
               userElement.innerHTML = `
                 <span class="online-dot online"></span>
                 <img src="${user.avatar || 'account.png'}" class="w-6 h-6 rounded-full">
                 <span>${user.nickname}</span>
+                <span class="text-xs text-gray-500 ml-2">${user.uuid ? user.uuid.substring(0, 8) + '...' : 'нет UUID'}</span>
+                <button onclick="deleteUserFromChatByUuid('${user.uuid}', '${user.nickname}')" class="ml-auto text-red-400 hover:text-red-300" title="Удалить из чата">
+                  🗑️
+                </button>
               `;
               onlineUsersList.appendChild(userElement);
             }
@@ -1910,7 +2386,7 @@ allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => 
           // Отображаем оффлайн пользователей (все остальные)
           Object.entries(allUsers).forEach(([nickname, userData]) => {
             const isOnline = Object.values(chatOnlineUsers).some(onlineUser => 
-              onlineUser.nickname === nickname && onlineUser.status === 'online'
+              onlineUser && onlineUser.uuid === userData.uuid && onlineUser.status === 'online'
             );
             
             if (!isOnline) {
@@ -1920,6 +2396,7 @@ allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => 
                 <span class="online-dot offline"></span>
                 <img src="${userData.avatar || 'account.png'}" class="w-6 h-6 rounded-full">
                 <span>${nickname}</span>
+                <span class="text-xs text-gray-500 ml-2">${userData.uuid ? userData.uuid.substring(0, 8) + '...' : 'нет UUID'}</span>
               `;
               offlineUsersList.appendChild(userElement);
             }
@@ -1937,6 +2414,26 @@ allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => 
       const modal = document.querySelector('#usersModal .modal');
       modal.classList.remove('show');
       setTimeout(() => document.getElementById('usersModal').classList.add('hidden'), 250);
+    }
+    
+    function deleteUserFromChatByUuid(uuid, nickname) {
+      if (!isAdmin || !uuid) return;
+      
+      if (confirm(`Удалить все сообщения пользователя ${nickname} из чата?`)) {
+        // Удаляем все сообщения пользователя
+        chatRef.once('value').then(snapshot => {
+          const messages = snapshot.val();
+          if (messages) {
+            Object.entries(messages).forEach(([key, message]) => {
+              if (message && message.uuid === uuid) {
+                chatRef.child(key).remove();
+              }
+            });
+          }
+          
+          showNotification(`✅ Сообщения пользователя ${nickname} удалены`, 'success');
+        });
+      }
     }
 
     // ==================== ВСЕ АККАУНТЫ (АДМИН) ====================
@@ -1960,7 +2457,10 @@ allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => 
           userElement.innerHTML = `
             <div class="user-info">
               <img src="${userData.avatar || 'account.png'}" class="w-8 h-8 rounded-full">
-              <span>${nickname}</span>
+              <div>
+                <div>${nickname}</div>
+                <div class="text-xs text-gray-500">${userData.uuid || 'нет UUID'}</div>
+              </div>
             </div>
             <div class="delete-user-btn" onclick="confirmDeleteAccount('${nickname}')">
               🗑️
@@ -2069,6 +2569,7 @@ allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => 
       renderLessons("fri", lessons.fri);
       document.getElementById('syncButtonContainer').classList.toggle('hidden', !isAdmin);
       document.getElementById('adminUsersButton').classList.toggle('hidden', !isAdmin);
+      document.getElementById('clearChatButton').classList.toggle('hidden', !isAdmin);
     }
 
     function editHW(subject, day) {
@@ -2145,7 +2646,7 @@ allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => 
     function closeEditModal() {
       const modal = document.querySelector("#editModal .modal");
       modal.classList.remove("show");
-      setTimeout(() => document.getElementById("editModal").classList.add("hidden"), 250);
+      setTimeout(() => document.getElementById("editModal").classList.add('hidden'), 250);
     }
 
     function openChangelog() {
@@ -2224,6 +2725,13 @@ allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => 
         userName = currentUser.nickname;
       }
       
+      // Проверяем мут
+      const savedMute = localStorage.getItem('userMutedUntil');
+      if (savedMute) {
+        userMutedUntil = parseInt(savedMute);
+        updateMuteStatus();
+      }
+      
       loadData();
       setupImageUpload();
       setupChat();
@@ -2248,6 +2756,9 @@ allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => 
       if (e.target.id === 'forgotPasswordModal') closeForgotPassword();
       if (e.target.id === 'allAccountsModal') closeAllAccountsModal();
       if (e.target.id === 'confirmDeleteAccountModal') closeConfirmDeleteAccount();
+      if (e.target.id === 'confirmClearChatModal') closeConfirmClearChat();
+      if (e.target.id === 'userProfileModal') closeUserProfile();
+      if (e.target.id === 'analyticsModal') closeAnalytics();
     });
   </script>
 </body>
