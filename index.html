@@ -1599,9 +1599,15 @@ allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => 
             };
             userName = nickname;
             
-            // Сохраняем в localStorage
-            localStorage.setItem('currentUser', JSON.stringify(currentUser));
-            updateChatBlurOverlay();
+// Сохраняем в localStorage
+localStorage.setItem('currentUser', JSON.stringify(currentUser));
+updateChatBlurOverlay();
+
+// ДОБАВЬТЕ ЭТУ СТРОЧКУ:
+setupAccountDeletionListener();
+
+// Переключаем на профиль
+document.getElementById('authSection').classList.add('hidden');
             
             // Переключаем на профиль
             document.getElementById('authSection').classList.add('hidden');
@@ -1657,9 +1663,15 @@ allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => 
           lastSeen: firebase.database.ServerValue.TIMESTAMP
         });
         
-        // Сохраняем в localStorage
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        updateChatBlurOverlay();
+// Сохраняем в localStorage
+localStorage.setItem('currentUser', JSON.stringify(currentUser));
+updateChatBlurOverlay();
+
+// ДОБАВЬТЕ ЭТУ СТРОЧКУ:
+setupAccountDeletionListener();
+
+// Переключаем на профиль
+document.getElementById('authSection').classList.add('hidden');
         
         // Переключаем на профиль
         document.getElementById('authSection').classList.add('hidden');
@@ -1709,18 +1721,23 @@ allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => 
       setTimeout(() => document.getElementById('confirmLogoutModal').classList.add('hidden'), 250);
     }
     
-    function logout() {
-      closeConfirmLogout();
-      closeAccountModal();
-      
-      isLoggedIn = false;
-      currentUser = null;
-      userName = "Гость_" + Math.floor(Math.random() * 1000);
-      localStorage.removeItem('currentUser');
-      updateChatBlurOverlay();
-      
-      showNotification('✅ Вы вышли из аккаунта', 'success');
-    }
+function logout() {
+  closeConfirmLogout();
+  closeAccountModal();
+  
+  // ДОБАВЬТЕ ЭТОТ БЛОК:
+  if (currentUser && currentUser.nickname) {
+    database.ref('accountDeletion').child(currentUser.nickname).off();
+  }
+  
+  isLoggedIn = false;
+  currentUser = null;
+  userName = "Гость_" + Math.floor(Math.random() * 1000);
+  localStorage.removeItem('currentUser');
+  updateChatBlurOverlay();
+  
+  showNotification('✅ Вы вышли из аккаунта', 'success');
+}
 
     // ==================== РЕЗЕРВНЫЕ КОДЫ ====================
     function showBackupCodes() {
@@ -1998,20 +2015,31 @@ allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => 
       accountToDelete = null;
     }
     
-    function deleteAccount() {
-      if (!accountToDelete || !isAdmin) return;
+function deleteAccount() {
+  if (!accountToDelete || !isAdmin) return;
+  
+  allUsersRef.child(accountToDelete).remove()
+    .then(() => {
+      // Отправляем сигнал об удалении аккаунта
+      database.ref('accountDeletion').child(accountToDelete).set({
+        deletedAt: firebase.database.ServerValue.TIMESTAMP,
+        deletedBy: currentUser.nickname
+      }).then(() => {
+        // Удаляем сигнал через секунду (он уже будет получен клиентами)
+        setTimeout(() => {
+          database.ref('accountDeletion').child(accountToDelete).remove();
+        }, 1000);
+      });
       
-      allUsersRef.child(accountToDelete).remove()
-        .then(() => {
-          showNotification('✅ Аккаунт удалён', 'success');
-          closeConfirmDeleteAccount();
-          showAllAccounts(); // Обновляем список
-        })
-        .catch(error => {
-          showNotification('❌ Ошибка удаления аккаунта', 'error');
-          console.error('Ошибка удаления аккаунта:', error);
-        });
-    }
+      showNotification('✅ Аккаунт удалён', 'success');
+      closeConfirmDeleteAccount();
+      showAllAccounts();
+    })
+    .catch(error => {
+      showNotification('❌ Ошибка удаления аккаунта', 'error');
+      console.error('Ошибка удаления аккаунта:', error);
+    });
+}
 
     // ==================== РЕНДЕРИНГ ====================
     function renderLessons(containerId, daySubjects) {
@@ -2102,6 +2130,24 @@ allUsersRef.orderByChild('ip').equalTo(userIP).once('value').then((snapshot) => 
       closeEditModal();
       renderAll();
     }
+
+function setupAccountDeletionListener() {
+  if (!currentUser || !currentUser.nickname) return;
+  
+  database.ref('accountDeletion').child(currentUser.nickname).on('value', (snapshot) => {
+    if (snapshot.exists()) {
+      showNotification('❌ Ваш аккаунт был удалён администратором', 'error');
+      
+      localStorage.removeItem('currentUser');
+      currentUser = null;
+      isLoggedIn = false;
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    }
+  });
+}
 
     // ==================== ОБРАБОТКА КОНТЕНТА ====================
     function formatContent(content) {
