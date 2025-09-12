@@ -1239,7 +1239,7 @@
     function loadChatMessages() {
       if (!isLoggedIn) return;
       
-      chatRef.limitToLast(50).on('value', (snapshot) => {
+      chatRef.limitToLast(10).on('value', (snapshot) => {
         const messages = snapshot.val();
         const messagesContainer = document.getElementById('chatMessages');
         messagesContainer.innerHTML = '';
